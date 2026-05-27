@@ -1,0 +1,6 @@
+- apikeyslist
+- apikeyscreate
+- apikeysget
+- apikeysrevoke
+- apikeysrotate
+- agentapikeyrotate

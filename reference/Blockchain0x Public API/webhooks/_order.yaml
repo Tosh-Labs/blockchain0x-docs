@@ -1,0 +1,9 @@
+- webhookslist
+- webhookscreate
+- webhooksget
+- webhooksupdate
+- webhooksdelete
+- webhooksrotatesecret
+- webhooksdeliverieslist
+- webhooksdeliveriesget
+- webhookstestfire

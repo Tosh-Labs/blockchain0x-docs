@@ -1,0 +1,13 @@
+- authotpsend
+- authotpverify
+- authpasskeyregisteroptions
+- authpasskeyregisterverify
+- authpasskeyassertoptions
+- authpasskeyassertverify
+- authsessionget
+- authsessionrefresh
+- authsessionrevoke
+- authpasskeyslist
+- authpasskeyscreate
+- authpasskeysrename
+- authpasskeysrevoke
