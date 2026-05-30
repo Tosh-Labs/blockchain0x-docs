@@ -210,6 +210,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebhookEndpointPage'
+              example:
+                data:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    url: https://example.com
+                    events:
+                      - string
+                    agentId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    agentFilter:
+                      - 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    signingSecret: sk_test_a1b2c3d4e5f6a7b8c9d0
+                    active: true
+                    createdAt: '2026-01-01T00:00:00Z'
+                page:
+                  next: string
+                  prev: string
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -449,6 +464,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentRequestPage'
+              example:
+                data:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    token: string
+                    amountWei: '1000000'
+                    status: open
+                    url: https://example.com
+                    network: mainnet
+                    createdAt: '2026-01-01T00:00:00Z'
+                    expiresAt: '2026-01-01T00:00:00Z'
+                    settledTxHash: >-
+                      0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    settledAt: '2026-01-01T00:00:00Z'
+                page:
+                  next: string
+                  prev: string
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -854,6 +885,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecentInflowsPage'
+              example:
+                data:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    agentId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    agentName: Example
+                    fromAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                    amountUsdc: '10.00'
+                    txHash: >-
+                      0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    reason: string
+                    chainId: 0
+                    network: mainnet
+                    confirmedAt: '2026-01-01T00:00:00Z'
+                page:
+                  next: string
+                  prev: string
         '401':
           $ref: '#/components/responses/Unauthorized'
   /v1/api-keys/usage:
@@ -1201,10 +1248,12 @@ paths:
               schema:
                 type: string
                 format: binary
+              example: string
             application/x-ndjson:
               schema:
                 type: string
                 format: binary
+              example: string
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1353,6 +1402,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentRequest'
+              example:
+                id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                token: string
+                amountWei: '1000000'
+                status: open
+                url: https://example.com
+                network: mainnet
+                createdAt: '2026-01-01T00:00:00Z'
+                expiresAt: '2026-01-01T00:00:00Z'
+                settledTxHash: >-
+                  0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                settledAt: '2026-01-01T00:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1637,6 +1698,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CountryList'
+              example:
+                data:
+                  - id: 0
+                    code: string
+                    name: Example
+                    phoneCode: string
+                    currencySymbol: string
+                    capital: string
+                    currency: string
+                    continent: string
+                    continentCode: string
+                    alpha3: string
+                    flagIcon: string
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /v1/metadata/states:
@@ -1662,6 +1736,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StateList'
+              example:
+                data:
+                  - id: 0
+                    name: Example
+                    code: string
+                    countryId: 1
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /v1/metadata/timezones:
@@ -1680,6 +1760,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TimezoneList'
+              example:
+                data:
+                  - ianaName: Example
+                    label: Example
+                    utcOffset: 0
+                    region: string
         '429':
           $ref: '#/components/responses/TooManyRequests'
 components:
