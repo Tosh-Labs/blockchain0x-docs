@@ -1,4 +1,0 @@
----
-title: public
-hidden: false
----
