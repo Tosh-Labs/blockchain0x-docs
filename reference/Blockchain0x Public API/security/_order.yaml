@@ -8,3 +8,8 @@
 - securitymfaget-1
 - securitymfaenroll-1
 - securitymfadisable-1
+- securitysessionslist-2
+- securitysessionsrevoke-2
+- securitymfaget-2
+- securitymfaenroll-2
+- securitymfadisable-2

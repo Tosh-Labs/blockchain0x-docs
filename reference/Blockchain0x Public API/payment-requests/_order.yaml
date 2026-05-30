@@ -8,3 +8,9 @@
 - paymentrequestscancel-1
 - paymentrequestsgetbyid
 - paymentrequestssettle
+- paymentrequestslist-2
+- paymentrequestscreate-2
+- paymentrequestsgetpublic-2
+- paymentrequestscancel-2
+- paymentrequestsgetbyid-1
+- paymentrequestssettle-1

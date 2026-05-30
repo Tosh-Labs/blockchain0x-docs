@@ -10,3 +10,10 @@
 - apikeysusage
 - apikeysrotate-1
 - agentapikeyrotate
+- apikeyslist-2
+- apikeyscreate-2
+- apikeysget-2
+- apikeysrevoke-2
+- apikeysusage-1
+- apikeysrotate-2
+- agentapikeyrotate-1
