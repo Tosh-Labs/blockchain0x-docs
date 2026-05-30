@@ -1,6 +1,6 @@
 ---
 api:
   file: openapi.yaml
-  operationId: workspacesExportStatus
+  operationId: authEmailChangeRequest
 hidden: false
 ---

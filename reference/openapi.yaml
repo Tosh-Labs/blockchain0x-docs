@@ -37,6 +37,10 @@ servers:
     description: Staging (production-shaped)
   - url: https://api.blockchain0x.com
     description: Production
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+  - apiKeyAuth: []
 tags:
   - name: auth
     description: Email-OTP + passkey authentication, sessions, email change.
@@ -76,12 +80,6 @@ tags:
     description: Signed-URL upload sign + confirm + read.
   - name: chains
     description: Public chain list + per-chain config.
-  - name: metadata
-    description: Public reference catalog (countries, states, timezones).
-security:
-  - bearerAuth: []
-  - cookieAuth: []
-  - apiKeyAuth: []
 paths:
   /v1/auth/otp/send:
     post:
@@ -446,6 +444,88 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/auth/email-change:
+    post:
+      operationId: authEmailChangeRequest
+      summary: Initiate an email-change flow (sends an OTP to the new address).
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthEmailChangeRequest'
+            example:
+              newEmail: founder+new@example.com
+      responses:
+        '202':
+          description: OTP queued to the new address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEmailChangeTicket'
+              example:
+                ticketId: ec_01HQX5
+                expiresAt: '2026-05-17T10:15:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/auth/email-change/verify-new:
+    post:
+      operationId: authEmailChangeVerifyNew
+      summary: Submit the OTP delivered to the new address.
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthEmailChangeVerifyRequest'
+            example:
+              ticketId: ec_01HQX5
+              code: '581204'
+      responses:
+        '200':
+          description: New address proven; await confirmation on the old address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEmailChangeTicket'
+              example:
+                ticketId: ec_01HQX5
+                expiresAt: '2026-05-17T10:25:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/auth/email-change/confirm-old:
+    post:
+      operationId: authEmailChangeConfirmOld
+      summary: Submit the OTP delivered to the old address to finalize the change.
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthEmailChangeVerifyRequest'
+            example:
+              ticketId: ec_01HQX5
+              code: '903117'
+      responses:
+        '200':
+          description: Email change applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: usr_01HQX5
+                email: founder+new@example.com
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /v1/users/me:
     get:
       operationId: usersMeGet
@@ -621,203 +701,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
-  /v1/workspaces/invites/accept:
-    post:
-      operationId: workspacesInvitesAccept
-      summary: Accept a workspace invite via its token.
-      description: |
-        Public endpoint (token-gated). Looks up the invite by the
-        sha256 of the supplied token, validates it is not revoked or
-        expired, and requires the caller to be signed in with the
-        invited email. On success, inserts a `workspace_members` row
-        and stamps `workspace_invites.accepted_at` in a single
-        transaction. Idempotent on replay for the same accepter.
-      tags:
-        - workspaces
-      x-blockchain0x-network-exempt: true
-      x-blockchain0x-examples-exempt: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - token
-              properties:
-                token:
-                  type: string
-                  minLength: 8
-                  maxLength: 256
-                  description: Raw invite token from the email's accept-link.
-      responses:
-        '200':
-          description: Invite accepted (or idempotent replay).
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - workspaceId
-                  - role
-                  - accepted
-                  - replay
-                properties:
-                  workspaceId:
-                    type: string
-                    format: uuid
-                  memberId:
-                    type: string
-                    nullable: true
-                  role:
-                    type: string
-                    enum:
-                      - owner
-                      - admin
-                      - developer
-                      - viewer
-                  accepted:
-                    type: boolean
-                  replay:
-                    type: boolean
-        '400':
-          $ref: '#/components/responses/Conflict'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '410':
-          $ref: '#/components/responses/Conflict'
-  /v1/workspaces/invites/preview:
-    get:
-      operationId: workspacesInvitesPreview
-      summary: Preview a pending invite by its token (least disclosure).
-      description: >
-        Sub-plan 16.4.C4. Public, token-gated, NOT workspace-scoped. Powers the
-        accept-invite screen + the dashboard banner BEFORE acceptance. Returns
-        only what the recipient is entitled to see (workspace name + logo,
-        inviter display name, offered role + description, wallet-grant summary,
-        masked invitee email). Never returns member rosters, wallet ids,
-        balances, or other workspace data. Invalid tokens return the specific
-        sentinel codes (invite.expired / invite.revoked / invite.already_used /
-        invite.not_found).
-      tags:
-        - workspaces
-      x-blockchain0x-network-exempt: true
-      x-blockchain0x-examples-exempt: true
-      parameters:
-        - in: query
-          name: token
-          required: true
-          schema:
-            type: string
-            minLength: 8
-            maxLength: 256
-      responses:
-        '200':
-          description: Invite preview.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkspaceInvitePreview'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '410':
-          $ref: '#/components/responses/Conflict'
-  /v1/me/invites:
-    get:
-      operationId: meInvitesList
-      summary: List the current user's pending workspace invites.
-      description: >
-        Sub-plan 16.4.C6. Returns the PENDING invites whose email matches the
-        authenticated user's verified email, across any workspace, for the
-        dashboard banner. Least-disclosure per invite (same shape as the token
-        preview, plus inviteId; no raw token). Email match is on the session
-        user's email hash - never a client-supplied email.
-      tags:
-        - workspaces
-      x-blockchain0x-network-exempt: true
-      responses:
-        '200':
-          description: The caller's pending invites.
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - data
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/MyInvite'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /v1/me/invites/{inviteId}/accept:
-    parameters:
-      - in: path
-        name: inviteId
-        required: true
-        schema:
-          type: string
-          format: uuid
-    post:
-      operationId: meInvitesAccept
-      summary: Accept one of the current user's pending invites by id.
-      description: >
-        Sub-plan 16.4.C7. In-app (banner) accept path. Resolves the invite by
-        id, confirms the caller is the recipient (email hash match) - otherwise
-        404 (least disclosure) - then runs the same accept transaction as the
-        token path (materializes wallet grants, marks accepted). Idempotent for
-        the same accepter.
-      tags:
-        - workspaces
-      x-blockchain0x-network-exempt: true
-      responses:
-        '200':
-          description: Invite accepted (or idempotent replay).
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required:
-                  - workspaceId
-                  - role
-                  - accepted
-                  - replay
-                properties:
-                  workspaceId:
-                    type: string
-                    format: uuid
-                  memberId:
-                    type: string
-                    nullable: true
-                  role:
-                    type: string
-                    enum:
-                      - owner
-                      - admin
-                      - developer
-                      - viewer
-                  accepted:
-                    type: boolean
-                  replay:
-                    type: boolean
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '410':
-          $ref: '#/components/responses/Conflict'
   /v1/workspaces:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -937,536 +820,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: workspacesDelete
-      summary: Soft-delete a workspace.
-      description: |
-        Owner-only. Soft-deletes the workspace (stamps `deleted_at`),
-        cascade-revokes its API keys, webhooks, and pending invites,
-        and writes a `workspace.deleted` audit-log row. Refuses with
-        409 `workspace.has_active_subscriptions` while any agent
-        subscription is still active - cancel them first.
-      tags:
-        - workspaces
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                reason:
-                  type: string
-                  maxLength: 500
-                  description: Optional free-text reason recorded in the audit log.
-      responses:
-        '204':
-          description: Workspace deleted.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/workspaces/{workspaceId}/transfer-ownership:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: workspacesTransferOwnership
-      summary: Transfer workspace ownership to another member.
-      description: |
-        Owner-only. Demotes the current owner to Admin and promotes
-        the target user (who must already be a member) to Owner in a
-        single transaction. Refuses with HTTP 409 when the target is
-        the current owner or when a concurrent ownership change wins
-        the partial-unique `(workspace_id) WHERE role='Owner'` index
-        race. Emits a `workspace.owner_transferred` notification to
-        both parties.
-      tags:
-        - workspaces
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - toUserId
-              properties:
-                toUserId:
-                  type: string
-                  format: uuid
-                  description: UUID of an existing member to promote to Owner.
-      responses:
-        '204':
-          description: Ownership transferred.
-        '400':
-          $ref: '#/components/responses/Conflict'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/workspaces/{workspaceId}/receipts:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-      - in: query
-        name: cursor
-        schema:
-          type: string
-        description: Opaque cursor from a prior `page.next`.
-      - in: query
-        name: limit
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 50
-    get:
-      operationId: workspacesReceiptsList
-      summary: List receipts (confirmed inbound transactions) for a workspace.
-      description: |
-        Thin projection over `transactions` (status='confirmed',
-        direction='inbound') joined with the matching `payment_requests`
-        row (if any). Cursor-paged by (created_at, id) in DESC order.
-        Any workspace member can read.
-      tags:
-        - workspaces
-      x-blockchain0x-examples-exempt: true
-      responses:
-        '200':
-          description: Receipts page.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - data
-                  - page
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - id
-                        - date
-                        - agent
-                        - agentSlug
-                        - amount
-                        - token
-                        - chain
-                        - network
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        date:
-                          type: string
-                          format: date-time
-                        agent:
-                          type: string
-                        agentSlug:
-                          type: string
-                        amount:
-                          type: string
-                        token:
-                          type: string
-                        from:
-                          type: string
-                          nullable: true
-                        chain:
-                          type: string
-                        network:
-                          type: string
-                          enum:
-                            - mainnet
-                            - testnet
-                        paymentRequest:
-                          type: object
-                          nullable: true
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                            title:
-                              type: string
-                              nullable: true
-                            reference:
-                              type: string
-                              nullable: true
-                  page:
-                    type: object
-                    properties:
-                      next:
-                        type: string
-                        nullable: true
-                      prev:
-                        type: string
-                        nullable: true
-        '400':
-          $ref: '#/components/responses/Conflict'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-  /v1/workspaces/{workspaceId}/statements:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-    get:
-      operationId: workspacesStatementsList
-      summary: List finalized monthly statements for a workspace.
-      tags:
-        - workspaces
-      responses:
-        '200':
-          description: Statement list (reverse-chronological).
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - data
-                  - page
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - id
-                        - workspaceId
-                        - periodStart
-                        - periodEnd
-                        - totalUsdCents
-                        - txCount
-                        - finalizedAt
-                        - pdfUrl
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        workspaceId:
-                          type: string
-                          format: uuid
-                        periodStart:
-                          type: string
-                          format: date
-                        periodEnd:
-                          type: string
-                          format: date
-                        totalUsdCents:
-                          type: integer
-                        txCount:
-                          type: integer
-                        finalizedAt:
-                          type: string
-                          format: date-time
-                        pdfUrl:
-                          type: string
-                  page:
-                    type: object
-                    properties:
-                      next:
-                        type: string
-                        nullable: true
-                      prev:
-                        type: string
-                        nullable: true
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-  /v1/workspaces/{workspaceId}/statements/{statementFile}:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: statementFile
-        required: true
-        description: |
-          `<statementId>.pdf` - the statement id from the list endpoint
-          with a `.pdf` suffix. Other suffixes 404.
-        schema:
-          type: string
-    get:
-      operationId: workspacesStatementsPdf
-      summary: Stream a workspace statement as PDF.
-      tags:
-        - workspaces
-      x-blockchain0x-examples-exempt: true
-      responses:
-        '200':
-          description: PDF body.
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/workspaces/{workspaceId}/logo:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-    get:
-      operationId: workspacesLogoGet
-      summary: Stream the workspace logo.
-      tags:
-        - workspaces
-      x-blockchain0x-examples-exempt: true
-      responses:
-        '200':
-          description: Logo bytes.
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-            image/svg+xml:
-              schema:
-                type: string
-                format: binary
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    post:
-      operationId: workspacesLogoUpload
-      summary: Upload (or replace) the workspace logo.
-      description: |
-        Owner/Admin. Body is a JSON object with `contentType`
-        (`image/png` or `image/svg+xml`) and `dataBase64` (base64
-        bytes, up to 1 MB decoded). Returns the canonical
-        `logoUrl` plus byte size.
-      tags:
-        - workspaces
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - contentType
-                - dataBase64
-              properties:
-                contentType:
-                  type: string
-                  enum:
-                    - image/png
-                    - image/svg+xml
-                dataBase64:
-                  type: string
-      responses:
-        '200':
-          description: Logo accepted.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - logoUrl
-                  - contentType
-                  - byteSize
-                properties:
-                  logoUrl:
-                    type: string
-                  contentType:
-                    type: string
-                    enum:
-                      - image/png
-                      - image/svg+xml
-                  byteSize:
-                    type: integer
-        '400':
-          $ref: '#/components/responses/Conflict'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '413':
-          $ref: '#/components/responses/Conflict'
-        '415':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      operationId: workspacesLogoDelete
-      summary: Remove the workspace logo.
-      tags:
-        - workspaces
-      responses:
-        '204':
-          description: Logo cleared.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-  /v1/workspaces/{workspaceId}/export:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: workspacesExportRequest
-      summary: Request a one-shot workspace data export.
-      description: |
-        Owner-only. Enqueues a `workspace_exports` row, fans out a
-        `workspace.export.requested` notification, and returns 202
-        with the export id so the caller can poll
-        `GET /v1/workspaces/{id}/exports/{exportId}` for status. The
-        worker picks up the row, builds a JSON artifact (workspace,
-        agents, transactions, audit log), stamps a signed download
-        URL with a 24h TTL, and emits `workspace.export.ready`.
-        Idempotent within a 5-minute window for the same caller
-        (returns the existing row with `duplicate: true`).
-      tags:
-        - workspaces
-      x-blockchain0x-examples-exempt: true
-      responses:
-        '202':
-          description: Export queued (or duplicate within the idempotency window).
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - id
-                  - status
-                  - requestedAt
-                  - duplicate
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum:
-                      - requested
-                      - building
-                      - ready
-                  requestedAt:
-                    type: string
-                    format: date-time
-                  duplicate:
-                    type: boolean
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/workspaces/{workspaceId}/exports/{exportId}:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: workspaceId
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: exportId
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      operationId: workspacesExportStatus
-      summary: Poll the status of a workspace export.
-      tags:
-        - workspaces
-      responses:
-        '200':
-          description: Export status.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - id
-                  - status
-                  - requestedAt
-                  - requestedByYou
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum:
-                      - requested
-                      - building
-                      - ready
-                      - failed
-                  requestedAt:
-                    type: string
-                    format: date-time
-                  readyAt:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  byteSize:
-                    type: integer
-                    nullable: true
-                  downloadUrl:
-                    type: string
-                    nullable: true
-                  downloadUrlExpiresAt:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  failureReason:
-                    type: string
-                    nullable: true
-                  requestedByYou:
-                    type: boolean
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /v1/workspaces/{workspaceId}/members:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -1540,26 +893,6 @@ paths:
         required: true
         schema:
           type: string
-    get:
-      operationId: workspacesMembersGet
-      summary: Get a single member with their resolved wallet grants.
-      description: >
-        Sub-plan 16.4.C3. Any workspace member may read the roster; the response
-        includes the member's active wallet grants with the wallet name resolved
-        server-side (same workspace only). Never includes wallet balances.
-      tags:
-        - workspaces
-      responses:
-        '200':
-          description: Member with resolved wallet grants.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkspaceMember'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
     patch:
       operationId: workspacesMembersUpdate
       summary: Update a member's role.
@@ -1646,23 +979,16 @@ paths:
               role: developer
       responses:
         '201':
-          description: |
-            Invite sent. The response includes the raw `inviteToken`
-            and a fully-formed `acceptUrl` exactly once - subsequent
-            list reads (`GET /v1/workspaces/{id}/invites`) only return
-            the canonical `WorkspaceInvite` shape since only the
-            token hash is persisted.
+          description: Invite sent.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkspaceInviteCreated'
+                $ref: '#/components/schemas/WorkspaceInvite'
               example:
                 id: inv_01HQX5
                 email: teammate@example.com
                 role: developer
                 expiresAt: '2026-05-24T10:00:00Z'
-                inviteToken: a1b2c3...
-                acceptUrl: https://wallet.example.com/invites/accept?token=a1b2c3...
         '401':
           $ref: '#/components/responses/Unauthorized'
   /v1/workspaces/{workspaceId}/invites/{inviteId}:
@@ -1856,355 +1182,6 @@ paths:
                   network: mainnet
         '404':
           $ref: '#/components/responses/NotFound'
-  /v1/agents/{agentId}/onramp-session:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsOnrampSession
-      summary: Mint a Coinbase CDP Onramp session for this wallet.
-      description: |
-        Returns a short-lived Coinbase Onramp session token and the
-        Coinbase-hosted onramp URL the client opens to buy USDC with a card
-        (sub-plan 16.5.B1). Funding only - there is no fiat offramp. Requires
-        Developer+ access on the wallet. In demo/local mode a sandbox URL is
-        returned and Coinbase is never called.
-      tags:
-        - agents
-      responses:
-        '200':
-          description: Onramp session minted.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OnrampSession'
-              example:
-                hostedUrl: >-
-                  https://pay.coinbase.com/buy/select-asset?sessionToken=tok_01HQX5&defaultAsset=USDC&defaultNetwork=base
-                sessionToken: tok_01HQX5
-                expiresAt: '2026-05-27T00:05:00.000Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/agents/{agentId}/team:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    get:
-      operationId: agentsTeam
-      summary: List the members with access to this wallet.
-      description: |
-        Sub-plan 16.5.B14: the wallet detail Team-tab roster - Owner/Admin (who
-        implicitly have access) plus members with an active grant covering this
-        wallet. Replaces the legacy /internal/agents/{id}/collaborators call.
-        Requires Viewer+ on the wallet; balances are never exposed.
-      tags:
-        - agents
-      responses:
-        '200':
-          description: Wallet team roster.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - data
-                additionalProperties: false
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/WalletMemberRow'
-              example:
-                data:
-                  - memberId: mem_01
-                    displayName: Ada
-                    email: ada@x.com
-                    workspaceRole: Owner
-                    walletRole: null
-                    grantScope: null
-                  - memberId: mem_02
-                    displayName: Dev
-                    email: dev@x.com
-                    workspaceRole: Developer
-                    walletRole: Developer
-                    grantScope: wallet
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/agents/{agentId}/payment-requests:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsPaymentRequestCreate
-      summary: Create a shareable payment request bound to this wallet.
-      description: >
-        Agent-scoped "Create payment request" quick action (sub-plan 16.5.B4).
-
-        Pre-binds the agent from the path, requires Developer+ on the wallet,
-        and
-
-        returns a shareable hosted URL. `amountUsdc` is optional (open amount
-        when
-
-        omitted). Demo mode returns a sandbox URL and writes nothing. The
-
-        workspace-wide surface stays at POST /v1/payment-requests.
-      tags:
-        - agents
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                amountUsdc:
-                  type: string
-                  pattern: ^[0-9]+(\.[0-9]{1,6})?$
-                memo:
-                  type: string
-                  maxLength: 280
-            example:
-              amountUsdc: '12.50'
-              memo: invoice 42
-      responses:
-        '201':
-          description: Payment request created.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - id
-                  - url
-                additionalProperties: false
-                properties:
-                  id:
-                    type: string
-                  url:
-                    type: string
-                    format: uri
-                  amountUsdc:
-                    type: string
-                    pattern: ^[0-9]+(\.[0-9]{1,6})?$
-                  memo:
-                    type: string
-              example:
-                id: pr_01HQX5
-                url: https://wallet.blockchain0x.com/pay/tok_abc
-                amountUsdc: '12.50'
-                memo: invoice 42
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/agents/{agentId}/withdrawals/quote:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsWithdrawalQuote
-      summary: Quote a USDC withdrawal and preview the step-up gate.
-      description: >
-        Validates the recipient (shape, self-send, B0X infra denylist), confirms
-
-        the wallet holds enough USDC, and previews which auth factors the
-        execute
-
-        call will require (sub-plan 16.5.B2). Passkey + email OTP are always
-
-        required; one additional enrolled 2FA factor is required when the amount
-
-        exceeds the stricter of the 500-USDC product floor and the caller's
-
-        per-user large-withdrawal threshold. Requires Admin on the wallet.
-      tags:
-        - agents
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawalInitiate'
-            example:
-              toAddress: '0x2222222222222222222222222222222222222222'
-              amountUsdc: '125.50'
-      responses:
-        '200':
-          description: Withdrawal quote.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WithdrawalQuote'
-              example:
-                netUsdc: '125.5'
-                gasEstimateUsdc: '0.01'
-                requiresStepUp: false
-                requiredFactors:
-                  - passkey
-                  - email_otp
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-  /v1/agents/{agentId}/withdrawals:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - $ref: '#/components/parameters/IdempotencyKeyHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsWithdrawalExecute
-      summary: Execute a USDC withdrawal (step-up gated).
-      description: >
-        Verifies the auth factors (passkey + email OTP always; one additional
-
-        enrolled 2FA factor for amounts over the step-up threshold), then builds
-
-        and submits the USDC-transfer userop and records the outbound
-        transaction
-
-        (sub-plan 16.5.B3). Requires Admin on the wallet. Blocked with 403
-
-        demo.action_blocked in demo mode. A missing factor returns 422
-
-        WithdrawalStepUpRequired with the discriminated factor list.
-      tags:
-        - agents
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawalInitiate'
-            example:
-              toAddress: '0x2222222222222222222222222222222222222222'
-              amountUsdc: '125.50'
-              emailOtp: '123456'
-      responses:
-        '200':
-          description: Withdrawal submitted.
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - txHash
-                  - transactionId
-                additionalProperties: false
-                properties:
-                  txHash:
-                    type: string
-                  transactionId:
-                    type: string
-              example:
-                txHash: '0xdeadbeef'
-                transactionId: txn_01HQX5
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          description: Missing step-up factor(s) or insufficient balance.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WithdrawalStepUpRequired'
-              example:
-                code: withdrawal.requires_step_up
-                factors:
-                  - passkey
-                  - email_otp
-                  - totp
-                satisfied:
-                  - passkey
-                  - email_otp
-                enrolledExtraFactors:
-                  - totp
-        '502':
-          $ref: '#/components/responses/BadGateway'
-  /v1/agents/{agentId}/spend-permissions/summary:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    get:
-      operationId: agentsSpendPermissionSummary
-      summary: Rolled-up summary of the wallet's active spend permission.
-      description: |
-        Sub-plan 16.5.B7: the single active permission rolled up to
-        cap/used/remaining/perTx/expiresAt/status for the Permissions tab card.
-        `used` is the sum of confirmed outbound USDC within the active window;
-        `status` is none when the wallet has no permission. Requires Viewer+ on
-        the wallet.
-      tags:
-        - agents
-      responses:
-        '200':
-          description: Spend permission summary (status=none when there is none).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SpendPermissionSummary'
-              example:
-                status: active
-                capUsdc: '500'
-                usedUsdc: '120.5'
-                remainingUsdc: '379.5'
-                perTxUsdc: null
-                period: day
-                expiresAt: null
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /v1/agents/{agentId}/spend-permissions:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -2318,52 +1295,30 @@ paths:
           type: string
     get:
       operationId: agentsVerificationsList
-      summary: List the wallet's verification methods + statuses.
-      description: |
-        Sub-plan 16.5.B10: returns exactly email/github/sms (domain is never
-        offered). email is verified by definition; github reflects
-        agent_wallets.github_verification; sms is verified when the user has a
-        verified phone. Requires Viewer+ on the wallet.
+      summary: List verification challenges + statuses for an agent.
       tags:
         - agents
       responses:
         '200':
-          description: Verification methods + statuses.
+          description: Verification list.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - data
-                additionalProperties: false
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/WalletVerificationMethod'
+                $ref: '#/components/schemas/AgentVerificationPage'
               example:
                 data:
-                  - method: email
-                    status: verified
-                    target: dev@example.com
-                  - method: github
-                    status: not_started
-                    target: null
-                  - method: sms
-                    status: verified
-                    target: +1•••••4567
+                  - id: ver_01HQX5
+                    kind: domain
+                    target: acme.com
+                    status: pending
+                page:
+                  next: null
+                  prev: null
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
     post:
       operationId: agentsVerificationsCreate
-      summary: Start a verification (email, github, sms).
-      description: |
-        Sub-plan 16.5.B10: reports the method's current state and, for sms,
-        points at the dedicated OTP flow (B11). domain is rejected. Developer+.
+      summary: Request a new verification (domain, github, email).
       tags:
         - agents
       requestBody:
@@ -2371,157 +1326,29 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - method
-              additionalProperties: false
-              properties:
-                method:
-                  type: string
-                  enum:
-                    - email
-                    - github
-                    - sms
+              $ref: '#/components/schemas/AgentVerificationCreate'
             example:
-              method: sms
+              kind: domain
+              target: acme.com
       responses:
-        '200':
-          description: Current verification state for the requested method.
+        '201':
+          description: Verification challenge created.
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/WalletVerificationMethod'
-                  - type: object
-                    properties:
-                      next:
-                        type:
-                          - string
-                          - 'null'
+                $ref: '#/components/schemas/AgentVerification'
               example:
-                method: sms
-                status: not_started
-                target: null
-                next: POST .../sms/start
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/agents/{agentId}/verifications/sms/start:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsVerificationSmsStart
-      summary: Send an SMS verification code (or report already-verified).
-      description: >
-        Sub-plan 16.5.B11: sends a Twilio Verify OTP to the user's phone. If the
-
-        user already has a verified phone (16.3 account 2FA) this is a no-op
-        that
-
-        returns the verified state. Blocked in demo mode. Developer+.
-      tags:
-        - agents
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SmsVerificationStart'
-            example:
-              phone: '+15551234567'
-      responses:
-        '200':
-          description: Already verified (no OTP sent).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WalletVerificationMethod'
-              example:
-                method: sms
-                status: verified
-                target: +1•••••4567
-        '202':
-          description: OTP sent; awaiting check.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WalletVerificationMethod'
-              example:
-                method: sms
+                id: ver_01HQX5
+                kind: domain
+                target: acme.com
                 status: pending
-                target: •••••4567
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                evidenceHint: Add TXT record b0x-verify=...
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/agents/{agentId}/verifications/sms/check:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentsVerificationSmsCheck
-      summary: Verify an SMS code and persist the SMS verification.
-      description: |
-        Sub-plan 16.5.B11: checks the Twilio Verify code; on success writes a
-        verifications row (type=sms, status=verified). A bad code returns 401
-        verification.code_invalid. Blocked in demo mode. Developer+.
-      tags:
-        - agents
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SmsVerificationCheck'
-            example:
-              code: '123456'
-              phone: '+15551234567'
-      responses:
-        '200':
-          description: SMS verified.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WalletVerificationMethod'
-              example:
-                method: sms
-                status: verified
-                target: •••••4567
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /v1/agents/drafts/active:
     get:
       operationId: agentsDraftsGetActive
       summary: Get the authenticated user's active wizard draft (or null).
-      description: |
-        Returns `{ draft: AgentDraft }` when an active draft exists,
-        or `{ draft: null }` when none does. Active = `completed_at IS NULL`.
-      x-blockchain0x-network-exempt: true
-      x-blockchain0x-examples-exempt: true
       tags:
         - agents
       responses:
@@ -2550,8 +1377,6 @@ paths:
         merges `state` (top-level JSONB merge - nested objects are
         replaced, not deeply merged). Forward step jumps of more than
         one are rejected with `onboarding.invalid_transition`.
-      x-blockchain0x-network-exempt: true
-      x-blockchain0x-examples-exempt: true
       tags:
         - agents
       requestBody:
@@ -2592,8 +1417,6 @@ paths:
         Hard-deletes the active draft row so the user can start
         fresh. Idempotent - returns 204 whether or not a draft was
         present.
-      x-blockchain0x-network-exempt: true
-      x-blockchain0x-examples-exempt: true
       tags:
         - agents
       responses:
@@ -2601,70 +1424,6 @@ paths:
           description: Draft discarded (or no active draft existed).
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /v1/transactions/export:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-    get:
-      operationId: transactionsExport
-      summary: Export this wallet's transactions as a streamed CSV.
-      description: >
-        Sub-plan 16.5.B9: streams a CSV attachment of every matching transaction
-
-        (same filters as the list endpoint, no pagination cap). Requires Viewer+
-
-        on the wallet; agentId is required so the export is scoped to one
-        wallet.
-
-        Columns: timestamp, direction, amount, counterparty, reason, txHash,
-        fee,
-
-        status, autonomous.
-      tags:
-        - transactions
-      parameters:
-        - in: query
-          name: agentId
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: from
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - in: query
-          name: to
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - in: query
-          name: format
-          required: false
-          schema:
-            type: string
-            enum:
-              - csv
-      responses:
-        '200':
-          description: CSV attachment (text/csv).
-          content:
-            text/csv:
-              schema:
-                type: string
-              example: >
-                timestamp,direction,amount,counterparty,reason,txHash,fee,status,autonomous
-
-                2026-05-20T10:00:00.000Z,outbound,125.5,0xabc...,withdrawal,0xhash...,21000000000000,confirmed,false
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /v1/transactions:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -3084,26 +1843,7 @@ paths:
                 $ref: '#/components/schemas/MfaConfig'
               example:
                 totpEnabled: false
-                method: null
-                enrolledAt: null
-                last4PhoneDigits: null
-                totpLabel: null
-                webauthn2faLabel: null
-                methods:
-                  totp:
-                    enabled: false
-                    enrolledAt: null
-                    label: null
-                  webauthn_2fa:
-                    enabled: false
-                    enrolledAt: null
-                    label: null
-                  sms:
-                    enabled: false
-                    enrolledAt: null
-                    last4PhoneDigits: null
                 recoveryCodesRemaining: 0
-                backupCodesGeneratedAt: null
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -3141,22 +1881,12 @@ paths:
       - $ref: '#/components/parameters/XNetworkHeader'
     get:
       operationId: apiKeysList
-      summary: List API keys for the current workspace (or a single agent).
-      description: |
-        Without `agentId` the list is scoped to the caller's active workspace.
-        With `agentId` (the wallet detail API tab, sub-plan 16.5.B12) it is
-        filtered server-side to that agent's keys and gated on a Viewer+ grant
-        on the wallet.
+      summary: List API keys for the current workspace.
       tags:
         - api-keys
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
-        - in: query
-          name: agentId
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           description: API key list.
@@ -3281,73 +2011,17 @@ paths:
           $ref: '#/components/responses/Conflict'
         '410':
           $ref: '#/components/responses/Gone'
-  /v1/agents/{agentId}/api-keys/rotate:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: agentId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: agentApiKeyRotate
-      summary: Rotate this wallet's API key (quick action).
-      description: >
-        Sub-plan 16.5.B6 resolver for the wallet detail "Rotate API key" quick
-
-        action. Requires an Admin grant on the wallet. Resolves the agent's
-
-        single active key for the current network and rotates it (7-day
-        overlap).
-
-        404 when the wallet has no active key; 409 when it has several (the UI
-
-        then prompts the user to pick one and calls POST
-        /v1/api-keys/{id}/rotate).
-      tags:
-        - api-keys
-      responses:
-        '200':
-          description: New API key minted; predecessor remains valid for 7 days.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiKeyRotation'
-              example:
-                predecessor:
-                  id: ak_01HQX5
-                successor:
-                  id: ak_02HQX5
-                  secret: sk_live_xyz...
-                overlapEndsAt: '2026-05-24T10:00:00Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
   /v1/webhooks:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
     get:
       operationId: webhooksList
-      summary: List outbound webhook endpoints (workspace-wide or for one agent).
-      description: |
-        Without `agentId` the list is the active workspace's webhooks. With
-        `agentId` (the wallet detail tab, sub-plan 16.5.B13) it is filtered
-        server-side to that agent's webhooks, gated on a Viewer+ wallet grant.
+      summary: List outbound webhook endpoints.
       tags:
         - webhooks
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
-        - in: query
-          name: agentId
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           description: Webhook list.
@@ -3461,46 +2135,6 @@ paths:
       responses:
         '204':
           description: Webhook deleted.
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/webhooks/{webhookId}/rotate-secret:
-    parameters:
-      - $ref: '#/components/parameters/XNetworkHeader'
-      - in: path
-        name: webhookId
-        required: true
-        schema:
-          type: string
-    post:
-      operationId: webhooksRotateSecret
-      summary: Rotate the webhook's signing secret.
-      description: |
-        Mints a new HMAC signing secret + prefix + hash and returns
-        the plaintext once. Workspace-member auth required. Mirrors
-        the create response shape: list reads continue to omit the
-        signing secret.
-      tags:
-        - webhooks
-      x-blockchain0x-examples-exempt: true
-      responses:
-        '200':
-          description: New signing secret.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookEndpoint'
-              example:
-                id: wh_01HQX5
-                url: https://api.acme.com/blockchain0x
-                events:
-                  - payment.completed
-                signingSecret: whsec_...
-                active: true
-                createdAt: '2026-05-17T10:15:00Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
   /v1/webhooks/{webhookId}/deliveries:
@@ -4092,55 +2726,6 @@ paths:
                   - https://mainnet.base.org
         '404':
           $ref: '#/components/responses/NotFound'
-  /v1/metadata/countries:
-    get:
-      operationId: metadataCountriesList
-      summary: List all countries (reference catalog; cacheable indefinitely).
-      tags:
-        - metadata
-      security: []
-      responses:
-        '200':
-          description: Country catalog.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CountryList'
-  /v1/metadata/states:
-    get:
-      operationId: metadataStatesList
-      summary: List all states/provinces; optionally filter by countryId.
-      tags:
-        - metadata
-      security: []
-      parameters:
-        - in: query
-          name: countryId
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-      responses:
-        '200':
-          description: State catalog.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StateList'
-  /v1/metadata/timezones:
-    get:
-      operationId: metadataTimezonesList
-      summary: List all IANA timezones with offset + region (cacheable indefinitely).
-      tags:
-        - metadata
-      security: []
-      responses:
-        '200':
-          description: Timezone catalog.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TimezoneList'
 components:
   securitySchemes:
     bearerAuth:
@@ -4406,6 +2991,39 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    AuthEmailChangeRequest:
+      type: object
+      required:
+        - newEmail
+      additionalProperties: false
+      properties:
+        newEmail:
+          type: string
+          format: email
+    AuthEmailChangeTicket:
+      type: object
+      required:
+        - ticketId
+        - expiresAt
+      additionalProperties: false
+      properties:
+        ticketId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    AuthEmailChangeVerifyRequest:
+      type: object
+      required:
+        - ticketId
+        - code
+      additionalProperties: false
+      properties:
+        ticketId:
+          type: string
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
     WebAuthnRegisterOptions:
       type: object
       additionalProperties: true
@@ -4639,20 +3257,6 @@ components:
           maxLength: 80
         network:
           $ref: '#/components/schemas/Network'
-        networkModeExplicit:
-          type: boolean
-        defaultChainId:
-          type: string
-          nullable: true
-        logoUrl:
-          type: string
-          nullable: true
-        timezone:
-          type: string
-          nullable: true
-        billingContactEmail:
-          type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -4679,17 +3283,6 @@ components:
         slug:
           type: string
           pattern: ^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$
-        networkMode:
-          $ref: '#/components/schemas/Network'
-        timezone:
-          type: string
-          maxLength: 80
-          nullable: true
-        billingContactEmail:
-          type: string
-          format: email
-          maxLength: 254
-          nullable: true
     WorkspacePage:
       type: object
       required:
@@ -4715,18 +3308,6 @@ components:
           type: string
         userId:
           type: string
-        displayName:
-          type:
-            - string
-            - 'null'
-        email:
-          type:
-            - string
-            - 'null'
-        avatarUrl:
-          type:
-            - string
-            - 'null'
         role:
           type: string
           enum:
@@ -4737,10 +3318,6 @@ components:
         addedAt:
           type: string
           format: date-time
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrant'
     WorkspaceMemberCreate:
       type: object
       required:
@@ -4758,6 +3335,8 @@ components:
             - viewer
     WorkspaceMemberUpdate:
       type: object
+      required:
+        - role
       additionalProperties: false
       properties:
         role:
@@ -4766,10 +3345,6 @@ components:
             - admin
             - developer
             - viewer
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrantInput'
     WorkspaceMemberPage:
       type: object
       required:
@@ -4809,42 +3384,6 @@ components:
         createdAt:
           type: string
           format: date-time
-    WorkspaceInviteCreated:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - email
-        - role
-        - expiresAt
-        - inviteToken
-        - acceptUrl
-      properties:
-        id:
-          type: string
-        email:
-          type: string
-          format: email
-        role:
-          type: string
-          enum:
-            - admin
-            - developer
-            - viewer
-        expiresAt:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-        inviteToken:
-          type: string
-        acceptUrl:
-          type: string
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrant'
     WorkspaceInviteCreate:
       type: object
       required:
@@ -4861,213 +3400,6 @@ components:
             - admin
             - developer
             - viewer
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrantInput'
-    WalletGrantInput:
-      type: object
-      required:
-        - scope
-        - walletRole
-      additionalProperties: false
-      properties:
-        scope:
-          type: string
-          enum:
-            - all
-            - wallet
-        walletId:
-          type:
-            - string
-            - 'null'
-          format: uuid
-        walletRole:
-          type: string
-          enum:
-            - Admin
-            - Developer
-            - Viewer
-    WalletMemberRow:
-      type: object
-      required:
-        - memberId
-        - displayName
-        - email
-        - workspaceRole
-        - walletRole
-        - grantScope
-      additionalProperties: false
-      properties:
-        memberId:
-          type: string
-        displayName:
-          type: string
-        email:
-          type: string
-        workspaceRole:
-          type: string
-          enum:
-            - Owner
-            - Admin
-            - Developer
-            - Viewer
-            - Billing
-        walletRole:
-          oneOf:
-            - type: 'null'
-            - type: string
-              enum:
-                - Admin
-                - Developer
-                - Viewer
-        grantScope:
-          oneOf:
-            - type: 'null'
-            - type: string
-              enum:
-                - all
-                - wallet
-    WalletGrant:
-      type: object
-      required:
-        - scope
-        - walletRole
-      additionalProperties: false
-      properties:
-        scope:
-          type: string
-          enum:
-            - all
-            - wallet
-        walletId:
-          type:
-            - string
-            - 'null'
-          format: uuid
-        walletRole:
-          type: string
-          enum:
-            - Admin
-            - Developer
-            - Viewer
-        walletName:
-          type:
-            - string
-            - 'null'
-        walletSlug:
-          type:
-            - string
-            - 'null'
-        walletAddress:
-          type:
-            - string
-            - 'null'
-    WalletGrantPreview:
-      type: object
-      required:
-        - scope
-        - walletRole
-      additionalProperties: false
-      properties:
-        scope:
-          type: string
-          enum:
-            - all
-            - wallet
-        walletName:
-          type:
-            - string
-            - 'null'
-        walletRole:
-          type: string
-          enum:
-            - Admin
-            - Developer
-            - Viewer
-    WorkspaceInvitePreview:
-      type: object
-      additionalProperties: false
-      required:
-        - workspaceName
-        - inviterDisplayName
-        - role
-        - roleDescription
-        - walletGrants
-        - expiresAt
-        - status
-        - inviteeEmail
-        - emailMatchesSession
-      properties:
-        workspaceName:
-          type: string
-        workspaceLogoUrl:
-          type:
-            - string
-            - 'null'
-        inviterDisplayName:
-          type: string
-        role:
-          type: string
-          enum:
-            - admin
-            - developer
-            - viewer
-        roleDescription:
-          type: string
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrantPreview'
-        expiresAt:
-          type: string
-          format: date-time
-        inviteeEmail:
-          type: string
-        emailMatchesSession:
-          type: boolean
-        status:
-          type: string
-          enum:
-            - pending
-    MyInvite:
-      type: object
-      additionalProperties: false
-      required:
-        - inviteId
-        - workspaceName
-        - inviterDisplayName
-        - role
-        - roleDescription
-        - walletGrants
-        - expiresAt
-      properties:
-        inviteId:
-          type: string
-          format: uuid
-        workspaceName:
-          type: string
-        workspaceLogoUrl:
-          type:
-            - string
-            - 'null'
-        inviterDisplayName:
-          type: string
-        role:
-          type: string
-          enum:
-            - admin
-            - developer
-            - viewer
-        roleDescription:
-          type: string
-        walletGrants:
-          type: array
-          items:
-            $ref: '#/components/schemas/WalletGrantPreview'
-        expiresAt:
-          type: string
-          format: date-time
     WorkspaceInvitePage:
       type: object
       required:
@@ -5298,15 +3630,6 @@ components:
           type: string
         signature:
           type: string
-        periodSeconds:
-          type: integer
-          minimum: 0
-        expiresAt:
-          type: string
-          format: date-time
-        perTxWei:
-          type: string
-          pattern: ^[0-9]+$
     SpendPermissionPage:
       type: object
       required:
@@ -5320,30 +3643,6 @@ components:
             $ref: '#/components/schemas/SpendPermission'
         page:
           $ref: '#/components/schemas/PageInfo'
-    WalletVerificationMethod:
-      type: object
-      required:
-        - method
-        - status
-        - target
-      additionalProperties: false
-      properties:
-        method:
-          type: string
-          enum:
-            - email
-            - github
-            - sms
-        status:
-          type: string
-          enum:
-            - verified
-            - not_started
-            - pending
-        target:
-          type:
-            - string
-            - 'null'
     AgentVerification:
       type: object
       required:
@@ -5442,6 +3741,7 @@ components:
             - agent_details
             - sign_deploy
             - completed
+            - null
         state:
           type: object
           additionalProperties: true
@@ -5874,108 +4174,13 @@ components:
       type: object
       required:
         - totpEnabled
-        - method
-        - methods
-        - recoveryCodesRemaining
       additionalProperties: false
       properties:
         totpEnabled:
           type: boolean
-        method:
-          description: >-
-            Primary 2FA method used by the sign-in flow. NULL when nothing is
-            enrolled.
-          oneOf:
-            - type: 'null'
-            - type: string
-              enum:
-                - totp
-                - webauthn_2fa
-                - sms
-        enrolledAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        last4PhoneDigits:
-          type:
-            - string
-            - 'null'
-        totpLabel:
-          type:
-            - string
-            - 'null'
-        webauthn2faLabel:
-          type:
-            - string
-            - 'null'
-        methods:
-          type: object
-          additionalProperties: false
-          required:
-            - totp
-            - webauthn_2fa
-            - sms
-          properties:
-            totp:
-              type: object
-              additionalProperties: false
-              required:
-                - enabled
-              properties:
-                enabled:
-                  type: boolean
-                enrolledAt:
-                  type:
-                    - string
-                    - 'null'
-                  format: date-time
-                label:
-                  type:
-                    - string
-                    - 'null'
-            webauthn_2fa:
-              type: object
-              additionalProperties: false
-              required:
-                - enabled
-              properties:
-                enabled:
-                  type: boolean
-                enrolledAt:
-                  type:
-                    - string
-                    - 'null'
-                  format: date-time
-                label:
-                  type:
-                    - string
-                    - 'null'
-            sms:
-              type: object
-              additionalProperties: false
-              required:
-                - enabled
-              properties:
-                enabled:
-                  type: boolean
-                enrolledAt:
-                  type:
-                    - string
-                    - 'null'
-                  format: date-time
-                last4PhoneDigits:
-                  type:
-                    - string
-                    - 'null'
         recoveryCodesRemaining:
           type: integer
           minimum: 0
-        backupCodesGeneratedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
     MfaEnrolmentChallenge:
       type: object
       required:
@@ -6101,10 +4306,6 @@ components:
           items:
             type: string
           minItems: 1
-        agentId:
-          type:
-            - string
-            - 'null'
         signingSecret:
           type:
             - string
@@ -6131,11 +4332,6 @@ components:
           items:
             type: string
           minItems: 1
-        description:
-          type: string
-          maxLength: 280
-        agentId:
-          type: string
     WebhookEndpointUpdate:
       type: object
       additionalProperties: false
@@ -6668,347 +4864,6 @@ components:
             $ref: '#/components/schemas/Chain'
         page:
           $ref: '#/components/schemas/PageInfo'
-    Country:
-      type: object
-      required:
-        - id
-        - code
-        - name
-      additionalProperties: false
-      properties:
-        id:
-          type: integer
-        code:
-          type: string
-        name:
-          type: string
-        phoneCode:
-          type:
-            - string
-            - 'null'
-        currencySymbol:
-          type:
-            - string
-            - 'null'
-        capital:
-          type:
-            - string
-            - 'null'
-        currency:
-          type:
-            - string
-            - 'null'
-        continent:
-          type:
-            - string
-            - 'null'
-        continentCode:
-          type:
-            - string
-            - 'null'
-        alpha3:
-          type:
-            - string
-            - 'null'
-        flagIcon:
-          type:
-            - string
-            - 'null'
-    CountryList:
-      type: object
-      required:
-        - data
-      additionalProperties: false
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Country'
-    State:
-      type: object
-      required:
-        - id
-        - name
-        - countryId
-      additionalProperties: false
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        code:
-          type:
-            - string
-            - 'null'
-        countryId:
-          type: integer
-    StateList:
-      type: object
-      required:
-        - data
-      additionalProperties: false
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/State'
-    Timezone:
-      type: object
-      required:
-        - ianaName
-        - label
-        - utcOffset
-        - region
-      additionalProperties: false
-      properties:
-        ianaName:
-          type: string
-        label:
-          type: string
-        utcOffset:
-          type: integer
-        region:
-          type: string
-    TimezoneList:
-      type: object
-      required:
-        - data
-      additionalProperties: false
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Timezone'
-    WithdrawalInitiate:
-      type: object
-      required:
-        - toAddress
-        - amountUsdc
-      additionalProperties: false
-      properties:
-        toAddress:
-          type: string
-          pattern: ^0x[0-9a-fA-F]{40}$
-        amountUsdc:
-          type: string
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        passkeyAssertion:
-          description: Serialized WebAuthn assertion satisfying the passkey factor.
-          type: object
-          additionalProperties: true
-        emailOtp:
-          type: string
-          pattern: ^[0-9]{6}$
-        stepUpFactor:
-          description: The additional factor satisfied for a large withdrawal.
-          type: string
-          enum:
-            - totp
-            - sms
-            - hardware_key
-        stepUpProof:
-          description: >-
-            Proof for `stepUpFactor` (TOTP code, SMS code, or WebAuthn
-            assertion).
-          type: object
-          additionalProperties: true
-    WithdrawalQuote:
-      type: object
-      required:
-        - netUsdc
-        - gasEstimateUsdc
-        - requiresStepUp
-        - requiredFactors
-      additionalProperties: false
-      properties:
-        netUsdc:
-          type: string
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        gasEstimateUsdc:
-          type: string
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        requiresStepUp:
-          type: boolean
-        requiredFactors:
-          type: array
-          minItems: 2
-          items:
-            type: string
-            enum:
-              - passkey
-              - email_otp
-              - totp
-              - sms
-              - hardware_key
-    WithdrawalStepUpRequired:
-      type: object
-      required:
-        - code
-        - factors
-      additionalProperties: false
-      properties:
-        code:
-          type: string
-          enum:
-            - withdrawal.requires_step_up
-        factors:
-          type: array
-          minItems: 2
-          items:
-            type: string
-            enum:
-              - passkey
-              - email_otp
-              - totp
-              - sms
-              - hardware_key
-        satisfied:
-          type: array
-          items:
-            type: string
-            enum:
-              - passkey
-              - email_otp
-              - totp
-              - sms
-              - hardware_key
-        enrolledExtraFactors:
-          description: The extra factors this user has enrolled and may choose from.
-          type: array
-          items:
-            type: string
-            enum:
-              - totp
-              - sms
-              - hardware_key
-    OnrampSession:
-      type: object
-      required:
-        - hostedUrl
-        - sessionToken
-        - expiresAt
-      additionalProperties: false
-      properties:
-        hostedUrl:
-          type: string
-          format: uri
-        sessionToken:
-          type: string
-        expiresAt:
-          type: string
-          format: date-time
-    SpendPermissionSummary:
-      type: object
-      required:
-        - status
-      additionalProperties: false
-      properties:
-        status:
-          type: string
-          enum:
-            - active
-            - expired
-            - revoked
-            - none
-        capUsdc:
-          type:
-            - string
-            - 'null'
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        usedUsdc:
-          type:
-            - string
-            - 'null'
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        remainingUsdc:
-          type:
-            - string
-            - 'null'
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        perTxUsdc:
-          type:
-            - string
-            - 'null'
-          pattern: ^[0-9]+(\.[0-9]{1,6})?$
-        period:
-          type:
-            - string
-            - 'null'
-          enum:
-            - day
-            - week
-            - month
-        expiresAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-    SmsVerificationStart:
-      type: object
-      additionalProperties: false
-      properties:
-        phone:
-          description: E.164 phone number; omit to use the user's verified account phone.
-          type: string
-          pattern: ^\+[1-9][0-9]{6,14}$
-    SmsVerificationCheck:
-      type: object
-      required:
-        - code
-      additionalProperties: false
-      properties:
-        code:
-          type: string
-          pattern: ^[0-9]{4,8}$
-    AgentApiKeyCreate:
-      type: object
-      required:
-        - label
-        - scopes
-      additionalProperties: false
-      properties:
-        label:
-          type: string
-          maxLength: 80
-        scopes:
-          type: array
-          items:
-            type: string
-          minItems: 1
-    AgentWebhookCreate:
-      type: object
-      required:
-        - url
-        - events
-      additionalProperties: false
-      properties:
-        url:
-          type: string
-          format: uri
-        events:
-          type: array
-          items:
-            type: string
-          minItems: 1
-    TransactionsExportQuery:
-      type: object
-      required:
-        - agentId
-        - format
-      additionalProperties: false
-      properties:
-        agentId:
-          type: string
-        from:
-          type: string
-          format: date-time
-        to:
-          type: string
-          format: date-time
-        format:
-          type: string
-          enum:
-            - csv
   responses:
     BadRequest:
       description: Validation, malformed input, or missing/invalid `X-Network`.

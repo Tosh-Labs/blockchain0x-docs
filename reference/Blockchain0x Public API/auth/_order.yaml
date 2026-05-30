@@ -11,3 +11,6 @@
 - authpasskeyscreate
 - authpasskeysrename
 - authpasskeysrevoke
+- authemailchangerequest
+- authemailchangeverifynew
+- authemailchangeconfirmold

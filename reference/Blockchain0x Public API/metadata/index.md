@@ -1,4 +1,0 @@
----
-title: metadata
-hidden: false
----

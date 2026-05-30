@@ -1,6 +1,6 @@
 ---
 api:
   file: openapi.yaml
-  operationId: workspacesReceiptsList
+  operationId: authEmailChangeConfirmOld
 hidden: false
 ---
