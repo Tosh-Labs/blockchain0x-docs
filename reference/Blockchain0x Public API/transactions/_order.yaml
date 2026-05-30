@@ -1,3 +1,7 @@
 - transactionslist
 - transactionsget
 - transactionsbroadcast
+- transactionsexport
+- transactionslist-1
+- transactionsget-1
+- transactionsbroadcast-1

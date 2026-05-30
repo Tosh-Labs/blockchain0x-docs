@@ -14,3 +14,16 @@
 - authemailchangerequest
 - authemailchangeverifynew
 - authemailchangeconfirmold
+- authotpsend-1
+- authotpverify-1
+- authpasskeyregisteroptions-1
+- authpasskeyregisterverify-1
+- authpasskeyassertoptions-1
+- authpasskeyassertverify-1
+- authsessionget-1
+- authsessionrefresh-1
+- authsessionrevoke-1
+- authpasskeyslist-1
+- authpasskeyscreate-1
+- authpasskeysrename-1
+- authpasskeysrevoke-1

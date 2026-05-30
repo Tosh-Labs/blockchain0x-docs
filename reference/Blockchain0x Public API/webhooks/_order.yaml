@@ -6,3 +6,14 @@
 - webhooksdeliverieslist
 - webhooksdeliveriesget
 - webhookstestfire
+- workspaceswebhookslist
+- workspaceswebhookscreate
+- webhookslist-1
+- webhookscreate-1
+- webhooksget-1
+- webhooksupdate-1
+- webhooksdelete-1
+- webhooksrotatesecret
+- webhooksdeliverieslist-1
+- webhooksdeliveriesget-1
+- webhookstestfire-1
