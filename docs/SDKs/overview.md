@@ -1,8 +1,6 @@
 ---
 title: SDKs overview
 ---
-# SDKs overview
-
 Every Blockchain0x SDK wraps the same HTTP API behind the same resource surface,
 so the concepts you learn in one language carry to the others. The Node SDK is
 the reference implementation; the rest mirror it with idiomatic naming.
