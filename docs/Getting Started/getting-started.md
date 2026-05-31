@@ -2,47 +2,37 @@
 title: Welcome to Blockchain0x
 hidden: false
 ---
-<Callout icon="📘" theme="info">
-  **Template:**  Delete this callout and edit this page with your content and links.
-</Callout>
+# Welcome to Blockchain0x
 
-<Cards>
-  {/* Edit the props below to customize these components */}
-  <Card title="Quick Start" href="#" icon="fa-duotone fa-rocket-launch">Learn how to get started with our product</Card>
+Blockchain0x is the payments API for autonomous software. It gives an AI agent (or
+any backend service) its own on-chain wallet and a clean HTTP API to **send and
+receive USDC on Base** - test mode on Base Sepolia, live mode on Base mainnet, the
+same code for both.
 
-  <Card title="API Reference" href="#" icon="fa-duotone fa-code-simple">Explore endpoints and build your integration</Card>
+If you can call an HTTP endpoint, your agent can move money. No smart contracts to
+write, no key management to build, no chain-specific plumbing.
 
-  <Card title="Build with AI" href="#" icon="fa-duotone fa-sparkles">Use LLM features to automate your workflow</Card>
-</Cards>
+## Start here
 
-<br />
+- **[Quickstart](./quickstart)** - your agent sends a confirmed USDC payment on
+  Base testnet in under 10 minutes.
+- **[Introduction](./introduction)** - what Blockchain0x is and what you can build.
+- **[Authentication](./authentication)** - API keys, scopes, and key levels.
+- **[Test mode vs live mode](./test-mode-vs-live-mode)** - networks, the faucet, and `X-Network`.
 
-## Recent Releases
+## Build with an SDK
 
-<Cards>
-  <Card isNew kind="tile" title="v2.0 Migration" href="#" icon="fa-duotone fa-magnifying-glass">Everything you need to upgrade</Card>
+Same resource surface in every language - pick yours on the
+**[SDKs overview](../sdks/overview)**: Node, Python, Go, Ruby, plus the
+[x402](../sdks/x402) HTTP-402 pay-per-call family.
 
-  <Card kind="tile" title="Webhooks" href="#" icon="fa-duotone fa-bullhorn">Real-time events are now available</Card>
+## Common tasks
 
-  <Card kind="tile" title="Android SDK" href="#" icon="fa-duotone fa-robot">Our native Android library is out of beta</Card>
-</Cards>
+- **[Set up and fund an agent](../guides/create-and-fund-an-agent)**
+- **[Send payments and idempotency](../guides/send-payments-and-idempotency)**
+- **[Receive payments](../guides/receive-payments)**
+- **[Webhooks and signature verification](../guides/webhooks-and-signature-verification)**
+- **[Going live](../guides/going-live)**
 
-<br />
-
-## The Basics
-
-<Cards>
-  <Card kind="tile" title="Customize" href="#" icon="fa-duotone fa-brush">Style the widget to match your brand</Card>
-
-  <Card kind="tile" title="Integrations" href="#" icon="fa-duotone fa-arrow-down-left-and-arrow-up-right-to-center">Connect with third-party services</Card>
-
-  <Card kind="tile" title="CLI" href="#" icon="fa-duotone fa-terminal">Manage resources from your terminal</Card>
-
-  <Card kind="tile" title="Security" href="" icon="fa-duotone fa-shield-dog">Learn how we secure your data</Card>
-
-  <Card kind="tile" title="Common Issues" href="" icon="fa-duotone fa-file-circle-info">Troubleshoot common issues</Card>
-
-  <Card kind="tile" title="Sync" href="#" icon="fa-duotone fa-code-compare">Connect to a storage provider</Card>
-</Cards>
-
-<br />
+Prefer the raw surface? The **[API reference](/reference)** is generated from our
+OpenAPI spec, with SDK code samples on every endpoint.
