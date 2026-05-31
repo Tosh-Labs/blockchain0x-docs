@@ -1,8 +1,6 @@
 ---
 title: Webhooks and signature verification
 ---
-# Webhooks and signature verification
-
 Webhooks push events to your server the moment something happens - a payment
 completes, a transaction confirms - so you react without polling. Every delivery is
 HMAC-signed; **always verify the signature before trusting the body.**
