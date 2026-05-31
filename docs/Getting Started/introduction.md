@@ -1,8 +1,6 @@
 ---
 title: Introduction
 ---
-# Blockchain0x
-
 Blockchain0x is the payments API for autonomous software. It gives an AI agent,
 a backend service, or a script its own on-chain wallet and a clean HTTP API to
 **send and receive USDC on Base** - test mode on Base Sepolia, live mode on Base
