@@ -1,8 +1,6 @@
 ---
 title: Set up and fund an agent
 ---
-# Set up and fund an agent
-
 An **agent** (agent wallet) is the on-chain wallet your AI agent controls - it
 holds USDC, signs payments, and gets paid. This guide gets one ready to transact.
 
