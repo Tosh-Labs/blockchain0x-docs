@@ -2,26 +2,21 @@ openapi: 3.1.0
 info:
   title: Blockchain0x Public API
   summary: Non-custodial agent-wallet REST surface (workspace + agent + payments).
-  description: >
+  description: >-
     Public REST API that backs `wallet.blockchain0x.com` and every Blockchain0x
 
     SDK. Authoritative resource catalog lives in
 
     [docs/plan/05-api-design.md](https://github.com/toshlabs-repos/blockchain0x-app/blob/dev/docs/plan/05-api-design.md);
 
-    this document is the wire-format contract.
+    this document is the wire-format contract. All workspace-scoped operations
+    require the `X-Network` header (mainnet or
 
+    testnet) Mutations accept `Idempotency-Key` Errors follow the canonical
+    envelope shape (see the
 
-    All workspace-scoped operations require the `X-Network` header (mainnet or
-
-    testnet) per sub-plan 04.5. Mutations accept `Idempotency-Key` per
-
-    sub-plan 05. Errors follow the canonical envelope shape (see the
-
-    `ErrorEnvelope` component).
-
-
-    **Workspace soft-delete (sub-plan 16.9).** Every `Workspace` carries
+    `ErrorEnvelope` component). **Workspace soft-delete.** Every `Workspace`
+    carries
 
     four read-only `deletion*` fields - `deletionPendingAt`,
 
@@ -106,7 +101,7 @@ tags:
   - name: metadata
     description: Public reference catalog (countries, states, timezones).
   - name: public
-    description: Unauthenticated public agent / sitemap surface (sub-plan 16.8).
+    description: Unauthenticated public agent / sitemap surface.
 paths:
   /v1/workspaces/{workspaceId}:
     parameters:
@@ -143,8 +138,8 @@ paths:
     patch:
       operationId: workspacesUpdate
       summary: Update a workspace.
-      description: |
-        Sub-plan 21.3 row A-4: workspace-flavor API keys with the
+      description: |-
+        Workspace-flavor API keys with the
         `manage_workspace_metadata` scope can edit the public-copy fields
         (description, tagline, brandColor, seoTitle, seoDescription,
         seoKeywords, socialLinks). Identity fields (name, slug,
@@ -190,8 +185,8 @@ paths:
     get:
       operationId: workspacesWebhooksList
       summary: List webhook subscriptions for this workspace.
-      description: |
-        Sub-plan 21.3 row B-2: workspace-flavor API keys with the
+      description: |-
+        Workspace-flavor API keys with the
         `read_workspace` scope reach this surface so operator dashboards
         can audit webhook subscriptions without a dashboard session.
         Returns workspace-wide subscriptions (agentId IS NULL +
@@ -298,11 +293,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     patch:
       operationId: agentsUpdate
-      summary: |
-        Update an agent. Identity fields (`name`, `publicStatus`, `disabled`)
-        are dashboard-only; API-key callers may edit the public profile
-        copy (tagline, aboutMd, seo*, socialLinks, showActivityChart) with
-        `manage_wallet_metadata` per sub-plan 21.2 row A-6.
+      summary: Update an agent.
       tags:
         - agents
       x-blockchain0x-apikey:
@@ -343,8 +334,7 @@ paths:
     get:
       operationId: agentsPublicGet
       summary: Get the public-facing agent profile.
-      description: |
-        Unauthenticated. Powers `PublicAgentPage` and `AddressExplorerPage`.
+      description: Unauthenticated. Powers `PublicAgentPage` and `AddressExplorerPage`.
       tags:
         - agents
       x-blockchain0x-apikey:
@@ -380,8 +370,8 @@ paths:
     post:
       operationId: agentsPaymentRequestCreate
       summary: Create a shareable payment request bound to this wallet.
-      description: >
-        Agent-scoped "Create payment request" quick action (sub-plan 16.5.B4).
+      description: >-
+        Agent-scoped "Create payment request" quick action.
 
         Pre-binds the agent from the path, requires Developer+ on the wallet,
         and
@@ -451,7 +441,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     get:
       operationId: agentsPaymentRequestsList
-      summary: List payment requests for this agent (sub-plan 21.2 row A-2).
+      summary: List payment requests for this agent.
       tags:
         - agents
       x-blockchain0x-apikey:
@@ -495,8 +485,8 @@ paths:
     get:
       operationId: agentsSpendPermissionSummary
       summary: Rolled-up summary of the wallet's active spend permission.
-      description: |
-        Sub-plan 16.5.B7: the single active permission rolled up to
+      description: |-
+        B7: the single active permission rolled up to
         cap/used/remaining/perTx/expiresAt/status for the Permissions tab card.
         `used` is the sum of confirmed outbound USDC within the active window;
         `status` is none when the wallet has no permission. Requires Viewer+ on
@@ -602,8 +592,8 @@ paths:
     get:
       operationId: transactionsExport
       summary: Export this wallet's transactions as a streamed CSV.
-      description: >
-        Sub-plan 16.5.B9: streams a CSV attachment of every matching transaction
+      description: >-
+        B9: streams a CSV attachment of every matching transaction
 
         (same filters as the list endpoint, no pagination cap). Requires Viewer+
 
@@ -859,8 +849,8 @@ paths:
     get:
       operationId: earningsRecentInflows
       summary: Reverse-chronological feed of confirmed USDC inbound transactions.
-      description: |
-        Sub-plan 16.6.B5. Reads the `transactions` table directly so each
+      description: |-
+        B5. Reads the `transactions` table directly so each
         row carries `txHash` + `fromAddress`. Filters: `direction='inbound'`,
         `status='confirmed'`, `token='USDC'`. Cursor is an opaque
         base64url-encoded `(confirmedAt, id)` tuple for stable keyset
@@ -913,15 +903,20 @@ paths:
     get:
       operationId: apiKeysUsage
       summary: Daily rollup of authenticated API-key calls.
-      description: |
-        Sub-plan 21.1 row A-11. Returns one row per UTC day in the
-        requested window with `calls` + `errors` counts. Gap-filled
-        server-side so the chart can plot directly without interpolating.
+      description: >-
+        Returns one row per UTC day in the
 
+        requested window with `calls` + `errors` counts. Gap-filled
+
+        server-side so the chart can plot directly without interpolating.
         Agent-scoped API keys see only their own agent's rollup; a
+
         caller-supplied `agentId` that disagrees with the key fence is
+
         rejected as `apikey.agent_mismatch` (AK-32). Workspace-scope
+
         keys (future) and cookie/JWT callers may pass `agentId` to drill
+
         down.
       tags:
         - api-keys
@@ -1065,8 +1060,8 @@ paths:
     get:
       operationId: auditLogList
       summary: List audit-log entries for the current workspace.
-      description: |
-        Workspace-scoped audit-log list. Sub-plan 16.7 enriches every row
+      description: |-
+        Workspace-scoped audit-log list. enriches every row
         with server-resolved `actorRef` + `entityRef`, drops the default
         page size to 10 (was 25), adds free-text search across action /
         actor displayName / entity name / entity id, plus filter chips
@@ -1101,7 +1096,7 @@ paths:
           name: action
           schema:
             type: string
-          description: |
+          description: |-
             Legacy exact-match action filter; prefer `actionPrefix=`.
             Kept for back-compat with callers built before 16.7.
         - in: query
@@ -1109,7 +1104,7 @@ paths:
           schema:
             type: string
             maxLength: 64
-          description: |
+          description: |-
             Server-side `LIKE 'prefix%'` filter on the `action` column.
             Example: `withdrawal.` to scope to withdrawal events.
         - in: query
@@ -1121,7 +1116,7 @@ paths:
           schema:
             type: string
             maxLength: 200
-          description: |
+          description: |-
             Free-text search; case-insensitive ILIKE across `action`,
             resolved actor displayName, resolved entity name, and the
             raw entity id.
@@ -1192,10 +1187,12 @@ paths:
     get:
       operationId: auditLogExport
       summary: Stream the filtered audit-log range as CSV or NDJSON.
-      description: |
-        Streams the full filtered audit-log range as a downloadable file
-        (sub-plan 16.7.B5). Honors every filter accepted by
+      description: >-
+        Streams the full filtered audit-log range as a downloadable file. Honors
+        every filter accepted by
+
         `GET /v1/audit-log`. Rate-limited to 1 request per minute per
+
         user; emits its own `audit_log.export.created` row.
       tags:
         - audit-log
@@ -1382,8 +1379,8 @@ paths:
         description: Internal UUID of the invoice.
     get:
       operationId: paymentRequestsGetById
-      summary: Singleton lookup by internal UUID (sub-plan 21.2 row A-2).
-      description: >
+      summary: Singleton lookup by internal UUID.
+      description: >-
         Distinct path from the public
         `/v1/payment-requests/{paymentRequestToken}`
 
@@ -1434,9 +1431,8 @@ paths:
         description: Internal UUID of the invoice (NOT the public hosted-URL token).
     post:
       operationId: paymentRequestsSettle
-      summary: |
-        Settle an invoice with on-chain proof (sub-plan 21.2 x402 flow).
-      description: |
+      summary: Settle an invoice with on-chain proof.
+      description: |-
         The payee agent calls this after the payer's on-chain transfer
         confirms. The backend verifies the supplied (txHash, payerAddress,
         amountUsdcVerified) tuple against `transactions` before flipping
@@ -1494,13 +1490,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: |
+          description: |-
             Agent mismatch (invoice belongs to a different agent), or the
             caller's key is not agent-scoped.
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: |
+          description: |-
             Invoice is no longer in `open` state, OR on-chain verification
             failed (tx not found / unconfirmed, recipient mismatch, amount
             mismatch). The error code distinguishes the case:
@@ -1567,7 +1563,7 @@ paths:
     post:
       operationId: paymentsCreate
       summary: Submit an autonomous payment.
-      description: |
+      description: |-
         `Idempotency-Key` is REQUIRED. The session key signs in OpenBao
         Transit; the server never holds a user private key.
       tags:
@@ -1838,7 +1834,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
+      description: >-
         Short-lived (<=15 min) asymmetric-JWT access token issued by the auth
 
         flow. See [05-api-design.md
@@ -1847,21 +1843,21 @@ components:
       type: apiKey
       in: cookie
       name: b0x_session
-      description: |
+      description: |-
         HttpOnly + SameSite=Lax cookie carrying the same access JWT as
         bearerAuth. Set by `POST /v1/auth/otp/verify`,
         `POST /v1/auth/passkey/assert/verify`, and `POST /v1/auth/session`.
         Cleared on `DELETE /v1/auth/session`. The paired `b0x_refresh`
         cookie is scoped to `Path=/v1/auth/session` so it never travels
-        on unrelated calls (sub-plan 15.5 H-19).
+        on unrelated calls.
     apiKeyAuth:
       type: apiKey
       in: header
       name: Authorization
-      description: |
+      description: |-
         `Authorization: Bearer sk_(live|test)_*` API key issued from the
         dashboard. Per-key scopes are `workspace_id + agent_id + mode` at MVP;
-        rotation has a 7-day overlap window. See sub-plan 05 §"API key
+        rotation has a 7-day overlap window. §"API key
         lifecycle".
   parameters:
     XNetworkHeader:
@@ -1873,11 +1869,11 @@ components:
         enum:
           - mainnet
           - testnet
-      description: |
+      description: |-
         Selects the network slice the request targets. Workspace-scoped
         responses are filtered to this network; chain-bound writes are
         stamped with it. Required on every non-admin workspace-scoped
-        operation. See sub-plan 04.5.
+        operation.
     IdempotencyKeyHeader:
       name: Idempotency-Key
       in: header
@@ -1886,7 +1882,7 @@ components:
         type: string
         minLength: 1
         maxLength: 255
-      description: |
+      description: |-
         Opaque client-chosen key dedupes a state-changing request for 24 hours.
         Required on `POST /v1/payments`; optional on every other mutation. A
         replay with the same key and the same request hash returns the cached
@@ -1898,7 +1894,7 @@ components:
       required: false
       schema:
         type: string
-      description: |
+      description: |-
         Opaque pagination cursor returned by the previous page (`page.next` or
         `page.prev`). Omit to fetch the first page.
     Limit:
@@ -1918,7 +1914,7 @@ components:
       schema:
         type: string
         pattern: ^[a-zA-Z_][a-zA-Z0-9_]*:(asc|desc)$
-      description: |
+      description: |-
         Sort spec in the form `<field>:<asc|desc>`. Allowed fields are listed
         per resource. Defaults are documented per endpoint.
     EarningsRange:
@@ -1933,8 +1929,8 @@ components:
           - 90d
           - all
         default: 30d
-      description: |
-        Time window for the Earnings page Range picker (sub-plan 16.6.A1).
+      description: |-
+        Time window for the Earnings page Range picker.
         Server resolves the window in UTC anchored on `now`; `all` removes
         the floor. If both `range` and explicit `from`/`to` are supplied,
         explicit values win.
@@ -1945,7 +1941,7 @@ components:
       schema:
         type: string
         format: date-time
-      description: |
+      description: |-
         Inclusive lower bound (ISO-8601 UTC). When present, overrides `range`'s
         lower bound. Must be strictly less than `to` if both are supplied.
     EarningsTo:
@@ -1955,7 +1951,7 @@ components:
       schema:
         type: string
         format: date-time
-      description: |
+      description: |-
         Exclusive upper bound (ISO-8601 UTC). When present, overrides `range`'s
         upper bound. Defaults to server `now` when omitted.
   schemas:
@@ -1977,7 +1973,7 @@ components:
       properties:
         code:
           type: string
-          description: |
+          description: |-
             Stable dot-namespaced snake_case error code. Single source of truth
             is `packages/shared/src/types/errors.ts`. Never relied on for
             display copy; use `message` for that.
@@ -1991,9 +1987,9 @@ components:
           description: Per-request id; matches the `x-request-id` response header.
           example: 01HQX5NXY2P3W2YGJ8ZQK5V4G6
         details:
-          description: |
+          description: |-
             Optional code-specific payload. Example shapes are documented per
-            error code in sub-plan 05 §Errors.
+            error code in §Errors.
     PageInfo:
       type: object
       required:
@@ -2016,11 +2012,10 @@ components:
       enum:
         - mainnet
         - testnet
-      description: |
+      description: |-
         Network slice. Carried on every chain-bound response (`Workspace`,
         `AgentWallet`, `Transaction`, `Payment`, `SpendPermission`,
-        `EarningsRollup`, `BillingLedgerEntry`, `WebhookDelivery`). See
-        sub-plan 04.5.
+        `EarningsRollup`, `BillingLedgerEntry`, `WebhookDelivery`).
     AuthOtpSendRequest:
       type: object
       required:
@@ -2137,7 +2132,7 @@ components:
     WebAuthnRegisterOptions:
       type: object
       additionalProperties: true
-      description: |
+      description: |-
         WebAuthn registration-options payload (the spec's
         `PublicKey Credential Creation Options` object, relayed verbatim).
       properties:
@@ -2165,7 +2160,7 @@ components:
     WebAuthnAssertOptions:
       type: object
       additionalProperties: true
-      description: |
+      description: |-
         WebAuthn assertion-options payload (the spec's
         `PublicKey Credential Request Options` object, relayed verbatim).
       properties:
@@ -2356,11 +2351,11 @@ components:
         - network
         - createdAt
       additionalProperties: false
-      description: |
+      description: |-
         Workspace metadata. The four `deletion*` fields are present on
         every workspace and read-only - they only flip via the
         owner-initiated soft-delete flow at POST/DELETE
-        `/v1/workspaces/{id}/deletion` (sub-plan 16.9). When the
+        `/v1/workspaces/{id}/deletion`. When the
         workspace is `active` they are all `null`; when in
         `pending_deletion` `deletionPendingAt` and `deletionFinalizesAt`
         are both set, the optional `deletionRequestedBy` /
@@ -2408,7 +2403,7 @@ components:
             - string
             - 'null'
           format: date-time
-          description: |
+          description: |-
             Derived: `deletionPendingAt + WORKSPACE_DELETION_GRACE_DAYS`.
             The countdown UI + worker finalizer both key off this value.
             Null when the workspace is active.
@@ -2439,8 +2434,8 @@ components:
     WorkspaceUpdate:
       type: object
       additionalProperties: false
-      description: |
-        Sub-plan 21.3 row A-4: workspace-flavor API keys with
+      description: |-
+        Workspace-flavor API keys with
         `manage_workspace_metadata` can edit the public-copy fields
         (description, tagline, brandColor, seoTitle, seoDescription,
         seoKeywords, socialLinks). Identity fields (name, slug,
@@ -2584,7 +2579,7 @@ components:
             - string
             - 'null'
           format: date-time
-          description: |
+          description: |-
             Derived `pendingAt + WORKSPACE_DELETION_GRACE_DAYS`. The
             countdown UI ticks against this value.
         requestedBy:
@@ -2596,9 +2591,9 @@ components:
           type:
             - string
             - 'null'
-          description: |
+          description: |-
             Display name of the user that initiated the pending deletion.
-            Sub-plan 16.9 row D5 surfaces this on the non-owner lockdown
+            surfaces this on the non-owner lockdown
             screen so the locked-out user knows who to contact. Null when
             the workspace is active or when the user row was hard-deleted.
         requestedByEmail:
@@ -2606,7 +2601,7 @@ components:
             - string
             - 'null'
           format: email
-          description: |
+          description: |-
             Email of the user that initiated the pending deletion. Same
             lockdown-screen use case as `requestedByDisplayName`.
         reason:
@@ -2646,7 +2641,7 @@ components:
             - string
             - 'null'
           format: date-time
-          description: |
+          description: |-
             NOW() + `WORKSPACE_EXPORT_RETENTION_DAYS` (default 7d) when
             the worker stamps it ready. After this instant the sweeper
             deletes the MinIO object and flips status to `expired`.
@@ -2670,7 +2665,7 @@ components:
             - 'null'
           additionalProperties:
             type: integer
-          description: |
+          description: |-
             Per-table row count for the CSVs in the ZIP (e.g.
             `{ wallets: 5, transactions: 1284 }`). The exact keys are
             the table names the exporter includes; consumers should
@@ -3318,15 +3313,13 @@ components:
         wallet:
           $ref: '#/components/schemas/AgentWallet'
         publicStatus:
-          description: >-
-            Visibility on the public `/a/<slug>` SSR surface (sub-plan 16.8).
-            Default `public`.
+          description: Visibility on the public `/a/<slug>` SSR surface. Default `public`.
           type: string
           enum:
             - public
             - private
         avatarUrl:
-          description: |
+          description: |-
             Relative URL of the owner-uploaded wallet logo
             (`/v1/agents/{id}/avatar`). Null when no avatar is set; the
             public page falls back to the OG image then the gradient.
@@ -3443,8 +3436,8 @@ components:
             - $ref: '#/components/schemas/AgentGithubVerificationInput'
             - type: 'null'
         publicStatus:
-          description: |
-            Owner-driven visibility flip (sub-plan 16.8). Default is
+          description: |-
+            Owner-driven visibility flip. Default is
             `public`; setting `private` immediately makes the SSR
             `/a/<slug>` route return 404 and fires a Cache-Tag purge.
           type: string
@@ -3522,7 +3515,7 @@ components:
           enum:
             - public
             - private
-          description: |
+          description: |-
             Mirrors `agent_wallets.public_status`. The public SSR routes
             refuse to serve `private` rows (404). See 16.8.B0.
         chainId:
@@ -3534,7 +3527,7 @@ components:
           type:
             - string
             - 'null'
-          description: |
+          description: |-
             Absolute URL of the per-slug Open Graph image. Always
             populated for public wallets (the route falls back to a
             committed static PNG when the worker has not yet generated
@@ -3543,7 +3536,7 @@ components:
           type:
             - string
             - 'null'
-          description: |
+          description: |-
             Relative URL of the owner-uploaded wallet logo. Null when no
             avatar is set; the public page then falls back to the OG
             image followed by a gradient + initial.
@@ -3580,7 +3573,7 @@ components:
         showActivityChart:
           type: boolean
         visibility:
-          description: |
+          description: |-
             Public-facing entitlement flags derived from the wallet's
             plan + active addons (12.1 billing). Drives premium UI cues
             on the public page (verified tick, premium ribbon, etc).
@@ -4101,8 +4094,8 @@ components:
             - ETH
             - USDC
           default: USDC
-          description: |
-            Sub-plan 16.6.A2: `USDC` is the canonical currency now that the
+          description: |-
+            A2: `USDC` is the canonical currency now that the
             16.6.B1 rollup worker writes 6dp USDC base units into the
             `amountWei` column. `ETH` remains an accepted enum value so any
             legacy rows written by older code paths round-trip through the API.
@@ -4142,8 +4135,7 @@ components:
             - ETH
             - USDC
           default: USDC
-          description: |
-            Sub-plan 16.6.A2: see `EarningsRollup.currency`.
+          description: 'A2: see `EarningsRollup.currency`.'
         periodCount:
           type: integer
           minimum: 0
@@ -4184,12 +4176,16 @@ components:
                 pattern: ^[0-9]+$
     EarningsKpiSummary:
       type: object
-      description: |
-        KPI block for the Earnings page hero + top-row stat cards (sub-plan
-        16.6.A2). All USDC fields are decimal strings in 6dp base units so
+      description: >-
+        KPI block for the Earnings page hero + top-row stat cards. All USDC
+        fields are decimal strings in 6dp base units so
+
         precision is preserved across the wire; the web-app formats them via
+
         the 16.6.A3 `usdcBaseUnitsToFloat` helper. `range` is the resolved
+
         window the server applied (echoes the request's `range`, or `'custom'`
+
         when explicit `from`/`to` won).
       required:
         - range
@@ -4229,8 +4225,8 @@ components:
           pattern: ^[0-9]+$
     EarningsTopAgent:
       type: object
-      description: |
-        One row of the Earnings page leaderboard (sub-plan 16.6.A2 / B4).
+      description: |-
+        One row of the Earnings page leaderboard.
         `sharePct` is the percentage of the workspace's total inbound USDC
         contributed by this agent in the requested window, rounded to one
         decimal place (a string so the wire format never depends on the
@@ -4278,9 +4274,9 @@ components:
           $ref: '#/components/schemas/PageInfo'
     RecentInflow:
       type: object
-      description: |
+      description: |-
         One confirmed inbound USDC transaction surfaced on the Earnings
-        "Recent inflows" feed (sub-plan 16.6.A2 / B5). Only confirmed USDC
+        "Recent inflows" feed. Only confirmed USDC
         transfers appear here; native-token and pending rows are filtered
         out server-side.
       required:
@@ -4645,9 +4641,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ApiKeyScope'
-          description: |
-            Wallet-level scopes. For sub-plan 21.1 wallet-only keys this
-            is the inline scope set. For sub-plan 21.3 workspace-flavor
+          description: |-
+            Wallet-level scopes. For wallet-only keys this
+            is the inline scope set. For workspace-flavor
             keys this stays empty - per-wallet scopes live in
             `walletAssignments[*].scopes`.
         agentId:
@@ -4658,12 +4654,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkspaceApiKeyScope'
-          description: |
-            Workspace-level scopes. Empty for sub-plan 21.1 wallet-only
-            keys; set on sub-plan 21.3 workspace-flavor keys.
+          description: |-
+            Workspace-level scopes. Empty for wallet-only
+            keys; set on workspace-flavor keys.
         walletAssignments:
           type: array
-          description: |
+          description: |-
             Per-wallet scope assignments for workspace-flavor keys.
             Each entry pairs an `agentId` with the wallet scopes the
             key holds on that wallet. Empty for wallet-only keys.
@@ -4702,16 +4698,18 @@ components:
           format: date-time
     ApiKeyScope:
       type: string
-      description: |
-        Sub-plan 21.2 §3.1: the closed set of wire-level scopes the dashboard
+      description: >-
+        §3.1: the closed set of wire-level scopes the dashboard
+
         offers at create-time. Each entry is enforced by the api-key-auth
+
         plugin before any handler runs. The names mirror the four
-        human-readable checkboxes:
-          - read_wallet_metadata: see balances, txns, history, limits
-          - manage_wallet_metadata: + update profile copy (tagline, social,
-            about) - identity (name, slug, visibility) stays dashboard-only
-          - pay_bills: outbound payments, capped by spend allowance
-          - receive_money: create invoices + settle them with on-chain proof
+
+        human-readable checkboxes: - read_wallet_metadata: see balances, txns,
+        history, limits - manage_wallet_metadata: + update profile copy
+        (tagline, social, about) - identity (name, slug, visibility) stays
+        dashboard-only - pay_bills: outbound payments, capped by spend allowance
+        - receive_money: create invoices + settle them with on-chain proof
       enum:
         - read_wallet_metadata
         - manage_wallet_metadata
@@ -4719,39 +4717,37 @@ components:
         - receive_money
     WorkspaceApiKeyScope:
       type: string
-      description: |
-        Sub-plan 21.3 §3.2: workspace-level wire scopes for workspace-flavor
+      description: >-
+        §3.2: workspace-level wire scopes for workspace-flavor
+
         API keys. Independent dimension from ApiKeyScope - a key may carry
+
         both, or only workspace scopes (workspace-only key), or only wallet
-        assignments. The names mirror the dashboard checkboxes:
-          - read_workspace: read workspace metadata, members, audit log, usage
-          - manage_workspace_metadata: + update public copy (description,
-            tagline, branding, SEO, social links) - identity (name, slug,
-            default network, disabled, ownership transfer) stays
-            dashboard-only forever.
+
+        assignments. The names mirror the dashboard checkboxes: -
+        read_workspace: read workspace metadata, members, audit log, usage -
+        manage_workspace_metadata: + update public copy (description, tagline,
+        branding, SEO, social links) - identity (name, slug, default network,
+        disabled, ownership transfer) stays dashboard-only forever.
       enum:
         - read_workspace
         - manage_workspace_metadata
     ApiKeyCreate:
       type: object
       additionalProperties: false
-      description: |
+      description: >-
         Two shapes are accepted on this body. The server picks the
-        flavor by inspecting the fields supplied:
 
-          1. Legacy wallet-only key (sub-plan 21.1):
-             { label, scopes, agentId } - the key is bound to ONE
-             wallet, and scopes are inline wallet scopes.
+        flavor by inspecting the fields supplied: 1. Legacy wallet-only key: {
+        label, scopes, agentId } - the key is bound to ONE wallet, and scopes
+        are inline wallet scopes. 2. Workspace-flavor key: { label,
+        workspaceScopes?, walletAssignments?, expiresInDays? } - the key may
+        carry workspace-level scopes and / or per-wallet assignments (an entry
+        per wallet the operator wants the key to touch). The server enforces the
+        §3.4 RBAC matrix at create-time; an over- grant rejects with
+        `apikey.role_insufficient_for_grants`. Mixing the two shapes (e.g.
+        setting both `scopes` and
 
-          2. Workspace-flavor key (sub-plan 21.3):
-             { label, workspaceScopes?, walletAssignments?,
-               expiresInDays? } - the key may carry workspace-level
-             scopes and / or per-wallet assignments (an entry per
-             wallet the operator wants the key to touch). The server
-             enforces the §3.4 RBAC matrix at create-time; an over-
-             grant rejects with `apikey.role_insufficient_for_grants`.
-
-        Mixing the two shapes (e.g. setting both `scopes` and
         `walletAssignments`) is rejected with `request.invalid`.
       required:
         - label
@@ -4764,14 +4760,14 @@ components:
           items:
             $ref: '#/components/schemas/ApiKeyScope'
           minItems: 1
-          description: |
+          description: |-
             Wallet-level scopes for a legacy wallet-only key. Pair with
             `agentId`. Mutually exclusive with `walletAssignments` /
             `workspaceScopes`.
         agentId:
           type: string
           format: uuid
-          description: |
+          description: |-
             Required for the legacy wallet-only key shape. Forbidden
             for the workspace-flavor shape - workspace keys identify
             their wallets via `walletAssignments[*].agentId`.
@@ -4779,7 +4775,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkspaceApiKeyScope'
-          description: |
+          description: |-
             Workspace-level scopes. Mutually exclusive with the legacy
             `scopes` field.
         walletAssignments:
@@ -4799,7 +4795,7 @@ components:
                 items:
                   $ref: '#/components/schemas/ApiKeyScope'
                 minItems: 1
-          description: |
+          description: |-
             Per-wallet scope assignments for the workspace-flavor key.
             Every assigned wallet must already be in the caller's
             workspace; the §3.4 RBAC matrix enforces the minter's role
@@ -4811,7 +4807,7 @@ components:
             - 30
             - 60
             - 90
-          description: |
+          description: |-
             Optional rotation hint. When set, the key carries an
             `expires_at` of NOW + expiresInDays days. Workspace-flavor
             only; legacy wallet-only keys do not expire by default.
@@ -5399,10 +5395,10 @@ components:
         - notification
         - pay_session
         - referral
-      description: |
+      description: |-
         Canonical entity-type discriminator written into
         `audit_log.entity_type`. Mirrors the frozen list in
-        `packages/shared/src/security/audit.ts` (sub-plan 16.7.A1).
+        `packages/shared/src/security/audit.ts`.
     AuditActorRef:
       type: object
       required:
@@ -5430,13 +5426,18 @@ components:
             - system
             - agent
             - api_key
-      description: |
+      description: >-
         Server-resolved actor for an audit-log row. The backend joins
-        `users`, agent rows, and api-key rows in a single LEFT JOIN pass
-        (sub-plan 16.7.B1) so the web-app never does N+1 lookups. System
+
+        `users`, agent rows, and api-key rows in a single LEFT JOIN pass so the
+        web-app never does N+1 lookups. System
+
         events (no `actor_id`) render with `kind='system'`,
+
         `displayName='System'`, and `email=''`. Agent-as-actor and
+
         api-key-as-actor surface the agent display name / api-key label
+
         respectively.
     AuditEntityRef:
       type: object
@@ -5456,10 +5457,10 @@ components:
           type:
             - string
             - 'null'
-      description: |
+      description: |-
         Server-resolved entity for an audit-log row. `name` is the
         human-readable label (workspace name, agent display name, passkey
-        label, ...). `href` is an in-app link target when one exists
+        label,...). `href` is an in-app link target when one exists
         (e.g. `/wallets/{agentId}` for agents). Deleted entities surface
         `name='(deleted)'` with a null `href`.
     AuditLogEntry:
@@ -5489,16 +5490,16 @@ components:
           format: date-time
         actorRef:
           $ref: '#/components/schemas/AuditActorRef'
-          description: |
-            Server-resolved actor (added in sub-plan 16.7.A2). Always
+          description: |-
+            Server-resolved actor (added in A2). Always
             present on responses from the enriched route; absent on
             legacy callers that still read `actor` only.
         entityRef:
           oneOf:
             - $ref: '#/components/schemas/AuditEntityRef'
             - type: 'null'
-          description: |
-            Server-resolved entity (added in sub-plan 16.7.A2). May be
+          description: |-
+            Server-resolved entity (added in A2). May be
             `null` for events that have no entity context (e.g. system
             health events).
     AuditLogEntryPage:
@@ -5519,11 +5520,11 @@ components:
           enum:
             - workspace_full
             - member_redacted
-          description: |
+          description: |-
             Indicates whether the caller is seeing the full workspace
             audit set (Owner/Admin) or a redacted view limited to own-actor
             events + events on entities they have a grant on (other roles).
-            Added in sub-plan 16.7.B2.
+            Added in B2.
     PaymentRequestCreate:
       type: object
       required:
@@ -5560,13 +5561,12 @@ components:
           pattern: ^[0-9]+$
         status:
           type: string
-          description: |
-            Lifecycle states:
-              - open: created, waiting for payment.
-              - completed: hosted-checkout path landed an on-chain confirmation.
-              - settled: sub-plan 21.2 row A-3 - x402 / SDK payer attested a
-                txHash and the backend verified it against `transactions`.
-              - expired / cancelled: terminal non-paying states.
+          description: >-
+            Lifecycle states: - open: created, waiting for payment. - completed:
+            hosted-checkout path landed an on-chain confirmation. - settled:
+            x402 / SDK payer attested a txHash and the backend verified it
+            against `transactions`. - expired / cancelled: terminal non-paying
+            states.
           enum:
             - open
             - completed
@@ -5590,7 +5590,7 @@ components:
           type:
             - string
             - 'null'
-          description: |
+          description: |-
             On-chain proof attached by the settle endpoint. Non-null only when
             `status = settled`.
         settledAt:
@@ -5638,8 +5638,8 @@ components:
         - payerAddress
         - amountUsdcVerified
       additionalProperties: false
-      description: |
-        Sub-plan 21.2 row A-3. The payer-side agent calls this endpoint
+      description: |-
+        The payer-side agent calls this endpoint
         after broadcasting payment to claim settlement. The backend MUST
         verify the tuple against `transactions` before marking the invoice
         settled - server is the trust anchor, agent is untrusted input.
@@ -5655,7 +5655,7 @@ components:
         amountUsdcVerified:
           type: string
           pattern: ^[0-9]+(?:\.[0-9]+)?$
-          description: |
+          description: |-
             USDC amount the payer claims they sent (human-readable, e.g.
             "0.10"). Backend converts to wei and rejects on mismatch.
     PaymentRequestPage:
@@ -6021,7 +6021,7 @@ components:
           type: string
           pattern: ^[0-9]+(\.[0-9]{1,6})?$
         allowCredentials:
-          description: |
+          description: |-
             Credential IDs the browser should pass in `allowCredentials` so
             the WebAuthn prompt targets a known passkey (no username picker).
           type: array
@@ -6115,7 +6115,7 @@ components:
           enum:
             - submitted
         txHash:
-          description: |
+          description: |-
             Initially the userOpHash (the on-chain tx hash is not yet known
             because the bundler still has to mine the userOp). Poll
             /withdrawals/{transactionId}/receipt to back-fill the real tx hash
@@ -6155,7 +6155,7 @@ components:
       additionalProperties: false
       properties:
         grossUsdc:
-          description: |
+          description: |-
             Total USDC leaving the smart account, equal to the amount
             the user typed. The recipient receives `netUsdc`; the B0X
             fee recipient receives `feeUsdc`. Both legs are batched
@@ -6520,7 +6520,7 @@ x-blockchain0x-apikey-scope-labels:
   - wire: read_wallet_metadata
     label: Read wallet metadata
     summary: See balances, transactions, history, and limits.
-    description: |
+    description: |-
       Read-only access to balances, transactions, earnings, audit log,
       spend permissions, payment requests, and usage telemetry. The
       minimum scope for any monitoring or reporting agent.
@@ -6529,7 +6529,7 @@ x-blockchain0x-apikey-scope-labels:
   - wire: manage_wallet_metadata
     label: Manage wallet metadata
     summary: Includes read. Also update profile copy (tagline, social, about).
-    description: |
+    description: |-
       Superset of "Read wallet metadata". Additionally lets the agent
       update its public-facing profile - tagline, about, SEO copy,
       social links, activity-chart visibility, and avatar URL. Identity
@@ -6540,7 +6540,7 @@ x-blockchain0x-apikey-scope-labels:
   - wire: pay_bills
     label: Send payments (pay bills)
     summary: Outbound payments, capped by the spend allowance.
-    description: |
+    description: |-
       Create outbound payments via the SDK or x402 client. Every payment
       is gated by the spend permission you configured for this agent -
       the API key cannot raise the cap. Combine with "Read" for an
@@ -6550,7 +6550,7 @@ x-blockchain0x-apikey-scope-labels:
   - wire: receive_money
     label: Receive payments
     summary: Create invoices, settle them with on-chain proof.
-    description: |
+    description: |-
       Create payment requests (invoices) and settle them on-chain via
       x402. Settlement requires a confirmed transaction hash; the
       backend verifies all four of (txHash, payer, amount, recipient)
