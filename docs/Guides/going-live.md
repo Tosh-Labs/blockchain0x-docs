@@ -1,8 +1,6 @@
 ---
 title: Going live
 ---
-# Going live
-
 Test mode and live mode share the same code - going live is a matter of swapping
 credentials and hardening a handful of operational details. Work this checklist
 before you move real USDC.
