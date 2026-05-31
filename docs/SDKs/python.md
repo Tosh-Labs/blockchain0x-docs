@@ -18,11 +18,14 @@ keys (or the provided dataclasses), and resources are reached as
 
 ## `client.agents`
 
-| Method                                 | Returns | Description                                    |
-| -------------------------------------- | ------- | ---------------------------------------------- |
-| `agents.create(body)`                  | `dict`  | Create an agent; `body` is forwarded verbatim. |
-| `agents.get(agent_id)`                 | `dict`  | Fetch one agent.                               |
-| `agents.list(cursor=None, limit=None)` | `dict`  | Page through agents.                           |
+| Method                                 | Returns | Description          |
+| -------------------------------------- | ------- | -------------------- |
+| `agents.get(agent_id)`                 | `dict`  | Fetch one agent.     |
+| `agents.list(cursor=None, limit=None)` | `dict`  | Page through agents. |
+
+> Creating agents is a dashboard action, not an API-key call - provision them at
+> [wallet.blockchain0x.com](https://wallet.blockchain0x.com) and reference them by
+> `agentId`.
 
 ## `client.payments`
 
@@ -35,10 +38,10 @@ An `Idempotency-Key` is minted automatically unless you pass `idempotency_key`.
 | `payments.create(*, body, idempotency_key=None)` | `dict`  | Create an outbound payment. |
 
 ```python
-agent = client.agents.create({"name": "My first agent", "slug": f"agent-{os.getpid()}"})
+# `agentId` is your agent wallet's id - copy it from the dashboard.
 payment = client.payments.create(
     body={
-        "agentId": agent["id"],
+        "agentId": os.environ["B0X_AGENT_ID"],
         "to": "0x000000000000000000000000000000000000dEaD",
         "amountWei": "10000",  # 0.01 USDC
     }
