@@ -3,21 +3,22 @@ title: Receive payments
 ---
 # Receive payments
 
-To get paid, you issue a **payment request** (an invoice), the payer sends USDC
-on-chain, and you settle the invoice with proof of that transfer. This guide walks
-the full lifecycle. The agent's key needs the `receive_money` scope (see
+For your **agent** to get paid, your code (through the SDK) issues a **payment
+request** (an invoice) on the agent's behalf, the payer sends USDC on-chain, and
+your code then settles the invoice with proof of that transfer. This guide walks
+the full lifecycle. The key your code uses needs the `receive_money` scope (see
 [Authentication](../getting-started/authentication)).
 
 ## The lifecycle
 
-1. **Create** a payment request for an amount - it starts `open` and carries a
-   `pr_*` id.
-2. **Share** the request with the payer (a hosted page, or via the x402 `402`
+1. **Your agent creates** a payment request for an amount - it starts `open` and
+   carries a `pr_*` id.
+2. **You share** the request with the payer (a hosted page, or via the x402 `402`
    handshake - see the [x402 reference](../sdks/x402)).
-3. The payer **transfers** the USDC on Base.
-4. You **settle** the request with the on-chain proof tuple; the backend verifies
-   it and flips the invoice to `settled`.
-5. A **webhook** fires so your system reacts without polling.
+3. **The payer transfers** the USDC on Base.
+4. **Your code settles** the request with the on-chain proof tuple; the backend
+   verifies it and flips the invoice to `settled`.
+5. **A webhook fires** so your system reacts without polling.
 
 ## Settle with on-chain proof
 
