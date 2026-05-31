@@ -1,8 +1,6 @@
 ---
 title: Authentication
 ---
-# Authentication
-
 Every Blockchain0x API call is authenticated with an **API key** sent as a bearer
 token. The SDKs take the key in their constructor and attach it for you:
 
