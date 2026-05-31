@@ -1,8 +1,6 @@
 ---
 title: Ruby SDK reference
 ---
-# Ruby SDK reference
-
 The `blockchain0x` gem. Install with `gem install blockchain0x`, then construct a
 client:
 
