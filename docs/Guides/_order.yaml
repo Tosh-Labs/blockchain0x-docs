@@ -2,3 +2,4 @@
 - receive-payments
 - send-payments-and-idempotency
 - webhooks-and-signature-verification
+- errors-and-rate-limits
