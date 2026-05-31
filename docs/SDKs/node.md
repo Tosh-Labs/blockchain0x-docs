@@ -16,19 +16,20 @@ response - branch on `error.code`.
 
 ## `agents`
 
-Agent wallets that hold funds and sign payments.
+Agent wallets that hold funds and sign payments. Read them by id or list them in
+the workspace.
 
 | Method                             | Returns                  | Description                          |
 | ---------------------------------- | ------------------------ | ------------------------------------ |
-| `agents.create(body)`              | `Promise<AgentSummary>`  | Create an agent wallet.              |
 | `agents.get(id)`                   | `Promise<AgentSummary>`  | Fetch one agent by id.               |
 | `agents.list({ cursor?, limit? })` | `Promise<AgentListPage>` | Page through the workspace's agents. |
 
 `AgentSummary` carries `id`, `name`, and `network` (`mainnet` | `testnet`).
 
-```ts
-const agent = await client.agents.create({ name: 'My first agent', slug: `agent-${Date.now()}` });
-```
+> **Creating agents** is a dashboard/account action and is not callable with an
+> API key. Provision agents at [wallet.blockchain0x.com](https://wallet.blockchain0x.com),
+> then reference them in code by `agentId` (see
+> [Set up and fund an agent](../guides/create-and-fund-an-agent)).
 
 ## `apiKeys`
 
