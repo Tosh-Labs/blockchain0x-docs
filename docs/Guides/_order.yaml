@@ -1,4 +1,3 @@
-- going-live-1
 - receive-payments
 - send-payments-and-idempotency
 - errors-and-rate-limits
