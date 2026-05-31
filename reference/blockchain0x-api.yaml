@@ -773,6 +773,10 @@ paths:
                 network: mainnet
         '404':
           $ref: '#/components/responses/NotFound'
+      x-codeSamples:
+        - lang: typescript
+          label: Node
+          source: const tx = await client.transactions.get(transactionId);
   /v1/balances:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -1504,6 +1508,29 @@ paths:
             `invoice.settlement_unconfirmed`,
             `invoice.settlement_recipient_mismatch`,
             `invoice.settlement_amount_mismatch`.
+      x-codeSamples:
+        - lang: typescript
+          label: Node
+          source: |-
+            const settled = await client.paymentRequests.settle({
+              paymentRequestId,
+              body: {
+                txHash: '0x' + 'a'.repeat(64),
+                payerAddress: '0x' + 'b'.repeat(40),
+                amountUsdcVerified: '25.00',
+              },
+            });
+        - lang: go
+          label: Go
+          source: "settled, err := client.PaymentRequests.Settle(ctx, \"pr_demo\", blockchain0x.PaymentRequestSettleBody{\n\tTxHash:             \"0x\" + \"a\",\n\tPayerAddress:       \"0x\" + \"b\",\n\tAmountUsdcVerified: \"25.00\",\n})\nif err != nil {\n\tpanic(err)\n}\nfmt.Println(\"settled\", settled.SettledTxHash)"
+        - lang: ruby
+          label: Ruby
+          source: |-
+            settled = client.payment_requests.settle(
+              'pr_demo',
+              { txHash: '0x' + 'a', payerAddress: '0x' + 'b', amountUsdcVerified: '25.00' }
+            )
+            puts "settled #{settled['settledTxHash']}"
   /v1/payments:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
@@ -1588,6 +1615,43 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+      x-codeSamples:
+        - lang: typescript
+          label: Node
+          source: |-
+            const payment = await client.payments.create(
+              { agentId, to: '0x000000000000000000000000000000000000dEaD', amountWei: '10000' },
+              { idempotencyKey: `pay-${agentId}-001` }
+            );
+        - lang: python
+          label: Python
+          source: >-
+            agent = client.agents.create({"name": "My first agent", "slug":
+            f"agent-{os.getpid()}"})
+
+            payment = client.payments.create(
+                body={
+                    "agentId": agent["id"],
+                    "to": "0x000000000000000000000000000000000000dEaD",
+                    "amountWei": "10000",  # 0.01 USDC
+                }
+            )
+
+            print("payment", payment["id"], payment["status"])
+        - lang: go
+          label: Go
+          source: "payment, err := client.Payments.Create(ctx, blockchain0x.PaymentCreateRequest{\n\tAgentID:   \"agw_demo\",\n\tTo:        \"0x000000000000000000000000000000000000dEaD\",\n\tAmountWei: \"10000\", // 0.01 USDC\n}, blockchain0x.RequestOptions{})\nif err != nil {\n\tpanic(err)\n}\nfmt.Println(\"payment\", payment.ID, payment.Status)"
+        - lang: ruby
+          label: Ruby
+          source: |-
+            payment = client.payments.create(
+              body: {
+                agentId: 'agw_demo',
+                to: '0x000000000000000000000000000000000000dEaD',
+                amountWei: '10000' # 0.01 USDC
+              }
+            )
+            puts "payment #{payment['id']} #{payment['status']}"
   /v1/payments/{paymentId}:
     parameters:
       - $ref: '#/components/parameters/XNetworkHeader'
