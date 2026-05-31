@@ -3,14 +3,16 @@ title: Send payments and idempotency
 ---
 # Send payments and idempotency
 
-An agent sends money with `payments.create`. The key needs the `pay_bills` scope,
-and every payment is capped by the agent's **spend permission** - the key can spend
-within that allowance but can never raise it. That two-layer gate is what makes it
-safe to hand a key to autonomous code.
+Your **agent** sends money when your code calls `payments.create` (naming the
+agent by its `agentId`). The key needs the `pay_bills` scope, and every payment is
+capped by the agent's **spend permission** - the key can spend within that
+allowance but can never raise it. That two-layer gate is what makes it safe to
+hand a key to an autonomous agent.
 
-## Send a payment
+## Your agent sends a payment
 
-`amountWei` is the integer USDC amount (6 decimals, so `'10000'` = 0.01 USDC):
+`agentId` is the agent wallet the funds come from; `amountWei` is the integer USDC
+amount (6 decimals, so `'10000'` = 0.01 USDC):
 
 ```ts
 const payment = await client.payments.create(
