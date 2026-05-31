@@ -1,8 +1,6 @@
 ---
 title: Go SDK reference
 ---
-# Go SDK reference
-
 `github.com/Tosh-Labs/blockchain0x-go`. Install with
 `go get github.com/Tosh-Labs/blockchain0x-go`. Every call takes a
 `context.Context` and returns a typed value plus an `error`; API failures come
