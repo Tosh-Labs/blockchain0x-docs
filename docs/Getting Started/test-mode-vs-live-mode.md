@@ -1,8 +1,6 @@
 ---
 title: Test mode vs live mode
 ---
-# Test mode vs live mode
-
 Blockchain0x runs two fully separated worlds. **Test mode** settles on Base
 Sepolia with valueless test USDC; **live mode** settles on Base mainnet with real
 USDC. Agents, payments, transactions, and webhooks never cross between them.
