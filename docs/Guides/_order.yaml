@@ -1,5 +1,5 @@
-- create-and-fund-an-agent
 - receive-payments
+- create-and-fund-an-agent
 - send-payments-and-idempotency
 - webhooks-and-signature-verification
 - errors-and-rate-limits
