@@ -1,6 +1,6 @@
 - create-and-fund-an-agent-1
-- send-payments-and-idempotency
 - receive-payments-1
 - webhooks-and-signature-verification
+- send-payments-and-idempotency
 - errors-and-rate-limits
 - going-live
