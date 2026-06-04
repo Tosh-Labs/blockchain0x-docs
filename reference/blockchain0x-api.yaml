@@ -1621,18 +1621,15 @@ paths:
             );
         - lang: python
           label: Python
-          source: >-
-            agent = client.agents.create({"name": "My first agent", "slug":
-            f"agent-{os.getpid()}"})
-
+          source: |-
+            # `agentId` is your agent wallet's id - copy it from the dashboard.
             payment = client.payments.create(
                 body={
-                    "agentId": agent["id"],
+                    "agentId": os.environ["B0X_AGENT_ID"],
                     "to": "0x000000000000000000000000000000000000dEaD",
                     "amountWei": "10000",  # 0.01 USDC
                 }
             )
-
             print("payment", payment["id"], payment["status"])
         - lang: go
           label: Go
