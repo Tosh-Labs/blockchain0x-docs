@@ -102,6 +102,13 @@ tags:
     description: Public reference catalog (countries, states, timezones).
   - name: public
     description: Unauthenticated public agent / sitemap surface.
+  - name: oauth
+    description: |-
+      OAuth 2.1 authorization server for MCP custom connectors.
+      RFC 8414 metadata + RFC 7591 anonymous dynamic client registration;
+      authorize/token/revoke land in later rows. The whole surface 404s
+      while OAUTH_AS_ENABLED is off. Network-agnostic: mode is carried
+      inside the minted token, so X-Network does not apply here.
 paths:
   /v1/workspaces/{workspaceId}:
     parameters:
@@ -1823,6 +1830,124 @@ paths:
                     label: Example
                     utcOffset: 0
                     region: string
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /.well-known/oauth-protected-resource:
+    get:
+      operationId: oauthProtectedResourceMetadata
+      summary: >-
+        RFC 9728 protected-resource metadata (served by the MCP ORIGIN, not this
+        API).
+      description: >-
+        Documented here for discovery-chain completeness: this path is served by
+        the MCP resource server's
+
+        origin (mcp.blockchain0x.com / dev-mcp / staging-mcp / local
+
+        mcp.localhost - integrations/mcp-server, NOT the API hosts in
+
+        the servers list above). A path-aware variant exists at
+
+        `/.well-known/oauth-protected-resource/mcp` with the identical
+
+        body. It names this API as the authorization server, which is
+
+        how clients find the RFC 8414 document below. 404 while the
+
+        MCP server's MCP_PUBLIC_BASE_URL / MCP_AUTH_SERVER_URL pair is
+
+        unset.
+      tags:
+        - oauth
+      x-blockchain0x-apikey:
+        mode: allow
+      security: []
+      responses:
+        '200':
+          description: Protected-resource metadata (RFC 9728).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - resource
+                  - authorization_servers
+                  - bearer_methods_supported
+                  - scopes_supported
+                additionalProperties: false
+                properties:
+                  resource:
+                    type: string
+                    format: uri
+                  authorization_servers:
+                    type: array
+                    items:
+                      type: string
+                      format: uri
+                  bearer_methods_supported:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - header
+                  scopes_supported:
+                    type: array
+                    items:
+                      type: string
+              example:
+                resource: https://mcp.blockchain0x.com/mcp
+                authorization_servers:
+                  - https://api.blockchain0x.com
+                bearer_methods_supported:
+                  - header
+                scopes_supported:
+                  - read_wallet_metadata
+                  - pay_bills
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /.well-known/oauth-authorization-server:
+    get:
+      operationId: oauthAuthorizationServerMetadata
+      summary: RFC 8414 authorization-server metadata (root-level, outside /v1).
+      description: |-
+        Discovery document MCP clients fetch after the resource server's
+        RFC 9728 metadata points them at this origin. 404 while
+        OAUTH_AS_ENABLED is off. Served with `Access-Control-Allow-Origin: *`
+        (browser-based MCP clients) and a 1h public cache.
+      tags:
+        - oauth
+      x-blockchain0x-apikey:
+        mode: allow
+      security: []
+      responses:
+        '200':
+          description: Authorization-server metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthServerMetadata'
+              example:
+                issuer: https://api.blockchain0x.com
+                authorization_endpoint: https://api.blockchain0x.com/v1/oauth/authorize
+                token_endpoint: https://api.blockchain0x.com/v1/oauth/token
+                registration_endpoint: https://api.blockchain0x.com/v1/oauth/register
+                revocation_endpoint: https://api.blockchain0x.com/v1/oauth/revoke
+                response_types_supported:
+                  - code
+                grant_types_supported:
+                  - authorization_code
+                  - refresh_token
+                code_challenge_methods_supported:
+                  - S256
+                token_endpoint_auth_methods_supported:
+                  - none
+                scopes_supported:
+                  - read_wallet_metadata
+                  - pay_bills
+        '404':
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 components:
@@ -6100,6 +6225,367 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Timezone'
+    OAuthServerMetadata:
+      type: object
+      required:
+        - issuer
+        - authorization_endpoint
+        - token_endpoint
+        - registration_endpoint
+        - revocation_endpoint
+        - response_types_supported
+        - grant_types_supported
+        - code_challenge_methods_supported
+        - token_endpoint_auth_methods_supported
+        - scopes_supported
+      additionalProperties: false
+      properties:
+        issuer:
+          type: string
+          format: uri
+        authorization_endpoint:
+          type: string
+          format: uri
+        token_endpoint:
+          type: string
+          format: uri
+        registration_endpoint:
+          type: string
+          format: uri
+        revocation_endpoint:
+          type: string
+          format: uri
+        response_types_supported:
+          type: array
+          items:
+            type: string
+            enum:
+              - code
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+            enum:
+              - authorization_code
+              - refresh_token
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+            enum:
+              - S256
+        token_endpoint_auth_methods_supported:
+          type: array
+          items:
+            type: string
+            enum:
+              - none
+        scopes_supported:
+          type: array
+          items:
+            type: string
+    OAuthClientRegistration:
+      type: object
+      required:
+        - redirect_uris
+      properties:
+        redirect_uris:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: string
+            format: uri
+        token_endpoint_auth_method:
+          type: string
+          enum:
+            - none
+        grant_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - authorization_code
+              - refresh_token
+        response_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - code
+        client_name:
+          type: string
+          maxLength: 255
+        client_uri:
+          type: string
+          maxLength: 2000
+        logo_uri:
+          type: string
+          maxLength: 2000
+        scope:
+          type: string
+          maxLength: 500
+        software_id:
+          type: string
+          maxLength: 255
+        software_version:
+          type: string
+          maxLength: 100
+    OAuthClientInformation:
+      type: object
+      required:
+        - client_id
+        - client_id_issued_at
+        - redirect_uris
+        - token_endpoint_auth_method
+        - grant_types
+        - response_types
+      additionalProperties: false
+      properties:
+        client_id:
+          type: string
+        client_id_issued_at:
+          type: integer
+          description: Seconds since the Unix epoch.
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        token_endpoint_auth_method:
+          type: string
+          enum:
+            - none
+        grant_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - authorization_code
+              - refresh_token
+        response_types:
+          type: array
+          items:
+            type: string
+            enum:
+              - code
+        client_name:
+          type: string
+        client_uri:
+          type: string
+        logo_uri:
+          type: string
+        scope:
+          type: string
+        software_id:
+          type: string
+        software_version:
+          type: string
+    OAuthRegistrationError:
+      type: object
+      required:
+        - error
+        - error_description
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          enum:
+            - invalid_client_metadata
+            - invalid_redirect_uri
+        error_description:
+          type: string
+    OAuthConsentDecision:
+      type: object
+      required:
+        - request
+        - decision
+      additionalProperties: false
+      properties:
+        request:
+          type: string
+          description: The HMAC-signed consent-request blob from the authorize redirect.
+        decision:
+          type: string
+          enum:
+            - approve
+            - deny
+        workspaceId:
+          type: string
+          format: uuid
+          description: Required to approve - the ONE workspace the grant is scoped to.
+        mode:
+          type: string
+          enum:
+            - test
+            - live
+          description: Required to approve; the workspace network lock wins on conflict.
+        scopes:
+          type: array
+          items:
+            type: string
+          description: Optional narrowing of the requested scope set (never widening).
+    OAuthTokenRequest:
+      type: object
+      required:
+        - grant_type
+      properties:
+        grant_type:
+          type: string
+          enum:
+            - authorization_code
+            - refresh_token
+        code:
+          type: string
+          description: Required for authorization_code.
+        redirect_uri:
+          type: string
+          format: uri
+          description: >-
+            Required for authorization_code; must exactly match the authorize
+            request.
+        client_id:
+          type: string
+        code_verifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+          description: RFC 7636 PKCE verifier (S256 only).
+        refresh_token:
+          type: string
+          description: Required for refresh_token.
+        resource:
+          type: string
+          format: uri
+          description: RFC 8707; when sent must match the value bound at authorize time.
+    OAuthTokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - refresh_token
+        - scope
+      additionalProperties: false
+      properties:
+        access_token:
+          type: string
+          description: Oat_<mode>_ prefixed; 60 min TTL.
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+          description: Ort_<mode>_ prefixed; rotates on every refresh.
+        scope:
+          type: string
+          description: Space-delimited granted scopes.
+    OAuthTokenError:
+      type: object
+      required:
+        - error
+        - error_description
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          enum:
+            - invalid_request
+            - invalid_client
+            - invalid_grant
+            - unsupported_grant_type
+            - invalid_target
+        error_description:
+          type: string
+    OAuthRevokeRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+        token_type_hint:
+          type: string
+          enum:
+            - access_token
+            - refresh_token
+        client_id:
+          type: string
+    OAuthGrant:
+      type: object
+      required:
+        - id
+        - clientName
+        - clientId
+        - workspaceId
+        - workspaceName
+        - mode
+        - scopes
+        - createdAt
+        - lastUsedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientName:
+          type:
+            - string
+            - 'null'
+          description: >-
+            Self-reported by the client at registration - UNTRUSTED display
+            string.
+        clientId:
+          type: string
+        workspaceId:
+          type: string
+          format: uuid
+        workspaceName:
+          type:
+            - string
+            - 'null'
+        mode:
+          type: string
+          enum:
+            - test
+            - live
+        scopes:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    OAuthGrantList:
+      type: object
+      required:
+        - data
+      additionalProperties: false
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OAuthGrant'
+    OAuthConsentDecisionResult:
+      type: object
+      required:
+        - redirectUrl
+      additionalProperties: false
+      properties:
+        redirectUrl:
+          type: string
+          format: uri
+          description: |-
+            The client redirect_uri carrying either code+state (approve)
+            or error=access_denied (deny). The consent page navigates here.
     WithdrawalPrepareRequest:
       type: object
       required:
