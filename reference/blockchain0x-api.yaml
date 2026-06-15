@@ -2447,23 +2447,80 @@ components:
             - string
             - 'null'
           format: date-time
-    UserDeletionTicket:
+    AccountDeletionChallenge:
       type: object
       required:
         - status
+        - hasPasskey
       additionalProperties: false
+      description: Result of POST /v1/users/me/deletion/challenge (re-auth step 1).
       properties:
         status:
           type: string
           enum:
-            - pending
-            - cancelled
-            - completed
-        executesAt:
+            - sent
+        hasPasskey:
+          type: boolean
+        webauthn:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
+    AccountDeletionConfirm:
+      type: object
+      required:
+        - otp
+      additionalProperties: false
+      description: Body for POST /v1/users/me/deletion (re-auth step 2 + initiate).
+      properties:
+        otp:
+          type: string
+          pattern: ^[0-9]{6}$
+          description: The 6-digit code mailed by the challenge step.
+        credential:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
+        reason:
           type:
             - string
             - 'null'
+          maxLength: 500
+    AccountDeletionStatus:
+      type: object
+      required:
+        - state
+      additionalProperties: false
+      description: |-
+        Account soft-delete state. `pending_deletion` carries the grace
+        countdown; `active` means no deletion is scheduled.
+      properties:
+        state:
+          type: string
+          enum:
+            - active
+            - pending_deletion
+        requestedAt:
+          type: string
           format: date-time
+        finalizesAt:
+          type: string
+          format: date-time
+        daysRemaining:
+          type: integer
+          minimum: 0
+        warnings:
+          type: object
+          additionalProperties: false
+          description: Informational only; never blocks deletion.
+          properties:
+            ownedWorkspaces:
+              type: integer
+              minimum: 0
+            walletsWithBalance:
+              type: integer
+              minimum: 0
     Workspace:
       type: object
       required:
